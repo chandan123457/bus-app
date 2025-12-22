@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": " ",
+    "slug": "bus-booking-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E88E5"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.busbooking.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#1E88E5"
+      },
+      "package": "com.busbooking.app"
+    },
+    "web": {
+      "favicon": "./assets/logo.png"
+    },
+    "sdkVersion": "54.0.0"
+  }
+}
