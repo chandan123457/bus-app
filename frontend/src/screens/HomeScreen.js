@@ -133,7 +133,17 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const handleSearch = () => {
-    console.log('Search buses:', { from, to, date });
+    // Format date properly
+    const formattedDate = date instanceof Date 
+      ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : date;
+    
+    navigation.navigate('BusSearchResults', {
+      from: from || 'Jaipur',
+      to: to || 'Jodhpur',
+      date: formattedDate,
+      stops: 'Poornawatar → Vulagar pakkam',
+    });
   };
 
   const handleQuickAction = (action) => {
@@ -198,13 +208,8 @@ const HomeScreen = ({ navigation }) => {
 
         {/* Main Content - Static Layout */}
         <View style={styles.mainContent}>
-          {/* Card Container for Layered Effect */}
-          <View style={styles.cardContainer}>
-            {/* Background White Card (Layer 1) */}
-            <View style={styles.backgroundCard} />
-            
-            {/* Main Booking Card (Layer 2) */}
-            <View style={styles.bookingCard}>
+          {/* Main Booking Card */}
+          <View style={styles.bookingCard}>
               <Text style={styles.bookingTitle}>Book Your Journey</Text>
               <Text style={styles.bookingSubtitle}>Find and book bus tickets across India.</Text>
 
@@ -261,7 +266,6 @@ const HomeScreen = ({ navigation }) => {
             >
               <Text style={styles.searchButtonText}>Search</Text>
             </TouchableOpacity>
-          </View>
           </View>
 
           {/* Quick Action Cards */}
@@ -463,42 +467,18 @@ const styles = StyleSheet.create({
     paddingBottom: 78,
   },
 
-  // Card container for layered effect
-  cardContainer: {
-    position: 'relative',
-    marginHorizontal: 18,
-    marginTop: -25,
-    alignSelf: 'center',
-    maxWidth: width - 36,
-  },
-
-  // Background card (visible from bottom)
-  backgroundCard: {
-    position: 'absolute',
-    top: 10,
-    left: 0,
-    right: 0,
-    bottom: -10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-
   // Booking card
   bookingCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 12,
-    zIndex: 1,
+    marginHorizontal: 18,
+    marginTop: -25,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowRadius: 8,
+    elevation: 4,
   },
 
   bookingTitle: {
@@ -590,23 +570,23 @@ const styles = StyleSheet.create({
 
   searchButton: {
     backgroundColor: '#4A90E2',
-    borderRadius: 22,
+    borderRadius: 24,
     paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 44,
+    height: 48,
     marginTop: 8,
     marginBottom: 0,
-    shadowColor: 'rgba(74, 144, 226, 0.3)',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   searchButtonText: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '500',
   },
 

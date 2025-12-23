@@ -11,6 +11,7 @@ import LandingScreen from '../screens/LandingScreen';
 import SignInScreen from '../screens/SignInScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import HomeScreen from '../screens/HomeScreen';
+import BusSearchResultsScreen from '../screens/BusSearchResultsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -60,6 +61,15 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="Home" 
           component={HomeScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+
+        {/* Bus Search Results Screen */}
+        <Stack.Screen 
+          name="BusSearchResults" 
+          component={BusSearchResultsScreen}
           options={{
             animation: 'slide_from_right',
           }}
