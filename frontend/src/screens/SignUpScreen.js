@@ -1,14 +1,15 @@
 /**
- * Sign In Screen - Premium iOS-Style Design
+ * Sign Up Screen - Premium iOS-Style Design
  * 
  * Features:
- * - Strong blur background with soft light overlay
- * - Compact single card (~94% width, ~78-80% height)
- * - Shallow curved bottom (subtle, not dramatic)
- * - Logo circle with soft shadow
- * - Refined compact spacing throughout
- * - Medium-height inputs and button
- * - Clean balanced layout
+ * - Strong blur background with dark overlay
+ * - Single large card with curved bottom
+ * - Logo circle overlapping card top
+ * - Four input fields (Name, Email, Password, Confirm Password)
+ * - Terms & policy checkbox
+ * - Blue SIGN UP button
+ * - Social login icons
+ * - Sign in footer link
  */
 
 import React, { useState } from 'react';
@@ -27,8 +28,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { FontAwesome } from '@expo/vector-icons';
-import Svg, { Path, Circle, G } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
@@ -54,36 +54,44 @@ const TwitterIcon = () => (
   </Svg>
 );
 
-const SignInScreen = ({ navigation }) => {
+const SignUpScreen = ({ navigation }) => {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const handleSignIn = () => {
-    console.log('Sign in:', { email, password });
+  const handleSignUp = () => {
+    console.log('Sign up:', { name, email, password, confirmPassword, agreedToTerms });
   };
 
   const handleSocialLogin = (provider) => {
     console.log('Social login:', provider);
   };
 
-  const handleSignUp = () => {
-    navigation.navigate('SignUp');
+  const handleSignIn = () => {
+    navigation.goBack();
+  };
+
+  const handleTermsPress = () => {
+    console.log('Open terms & policy');
   };
 
   return (
     <>
-      {/* Status bar visible (dark content for light background) */}
+      {/* Status bar visible */}
       <StatusBar style="dark" translucent backgroundColor="transparent" />
       
-      {/* Full-screen background - strong blur with soft light overlay */}
+      {/* Full-screen background - strong blur with soft dark overlay */}
       <ImageBackground
         source={require('../../assets/landing-background.jpg')}
         style={styles.background}
         resizeMode="cover"
         blurRadius={20}
       >
-        {/* Soft light overlay */}
+        {/* Soft dark overlay for readability */}
         <View style={styles.overlay} />
+        
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -109,13 +117,25 @@ const SignInScreen = ({ navigation }) => {
               {/* Main White Card */}
               <View style={styles.card}>
                 {/* Title */}
-                <Text style={styles.heading}>Sign in your account</Text>
+                <Text style={styles.heading}>Create your account</Text>
+
+                {/* Name Field */}
+                <Text style={styles.label}>Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="ex: lakshay"
+                  placeholderTextColor="#A8A8A8"
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                />
 
                 {/* Email Field */}
                 <Text style={styles.label}>Email</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="ex: lakshaybkl@gmail.com"
+                  placeholder="ex: lakshay@gmail.com"
                   placeholderTextColor="#A8A8A8"
                   value={email}
                   onChangeText={setEmail}
@@ -136,18 +156,50 @@ const SignInScreen = ({ navigation }) => {
                   autoCapitalize="none"
                 />
 
-                {/* Sign In Button */}
-                <TouchableOpacity
-                  style={styles.signInButton}
-                  onPress={handleSignIn}
-                  activeOpacity={0.85}
+                {/* Confirm Password Field */}
+                <Text style={styles.label}>Confirm password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="#A8A8A8"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+
+                {/* Terms & Policy Checkbox */}
+                <TouchableOpacity 
+                  style={styles.checkboxContainer}
+                  onPress={() => setAgreedToTerms(!agreedToTerms)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.signInButtonText}>SIGN IN</Text>
+                  <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+                    {agreedToTerms && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxText}>
+                    I understood the{' '}
+                    <Text style={styles.linkText} onPress={handleTermsPress}>
+                      terms & policy
+                    </Text>
+                    .
+                  </Text>
                 </TouchableOpacity>
 
-                {/* Divider - text only, no lines */}
+                {/* Sign Up Button */}
+                <TouchableOpacity
+                  style={styles.signUpButton}
+                  onPress={handleSignUp}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.signUpButtonText}>SIGN UP</Text>
+                </TouchableOpacity>
+
+                {/* Divider */}
                 <View style={styles.dividerContainer}>
-                  <Text style={styles.dividerText}>or sign in with</Text>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or sign up with</Text>
+                  <View style={styles.dividerLine} />
                 </View>
 
                 {/* Social Login Icons */}
@@ -181,10 +233,10 @@ const SignInScreen = ({ navigation }) => {
                 </View>
 
                 {/* Footer */}
-                <View style={styles.signUpContainer}>
-                  <Text style={styles.signUpText}>Don't have an account? </Text>
-                  <TouchableOpacity onPress={handleSignUp} activeOpacity={0.7}>
-                    <Text style={styles.signUpLink}>SIGN UP</Text>
+                <View style={styles.signInContainer}>
+                  <Text style={styles.signInText}>Have an account? </Text>
+                  <TouchableOpacity onPress={handleSignIn} activeOpacity={0.7}>
+                    <Text style={styles.signInLink}>SIGN IN</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -196,11 +248,10 @@ const SignInScreen = ({ navigation }) => {
   );
 };
 
-// Design constants - Premium iOS-style proportions
+// Design constants - matching Sign In screen
 const LOGO_CIRCLE_SIZE = 90;
 const CARD_TOP_RADIUS = 32;
-const CARD_BOTTOM_RADIUS = 45; // Shallow curve
-const CARD_HEIGHT_RATIO = 0.78; // Compact, not tall
+const CARD_BOTTOM_RADIUS = 45;
 const INPUT_HEIGHT = 48;
 const BUTTON_HEIGHT = 50;
 const SOCIAL_BUTTON_SIZE = 56;
@@ -219,7 +270,7 @@ const styles = StyleSheet.create({
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
   },
 
   safeArea: {
@@ -259,10 +310,9 @@ const styles = StyleSheet.create({
     height: LOGO_CIRCLE_SIZE * 0.6,
   },
 
-  // Main white card with shallow curved bottom
+  // Main white card with curved bottom
   card: {
     width: width * 0.94,
-    height: height * CARD_HEIGHT_RATIO,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: CARD_TOP_RADIUS,
     borderTopRightRadius: CARD_TOP_RADIUS,
@@ -278,13 +328,13 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 
-  // Title - compact and refined
+  // Title
   heading: {
     fontSize: 22,
     fontWeight: '700',
     color: '#000000',
     textAlign: 'left',
-    marginBottom: 20,
+    marginBottom: 18,
   },
 
   // Input label
@@ -296,7 +346,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
 
-  // Input field - medium height, compact
+  // Input field
   input: {
     height: INPUT_HEIGHT,
     backgroundColor: '#F0F0F0',
@@ -307,8 +357,50 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  // Sign In Button - medium height, balanced
-  signInButton: {
+  // Checkbox container
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 16,
+  },
+
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#D0D0D0',
+    backgroundColor: '#FFFFFF',
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  checkboxChecked: {
+    backgroundColor: PRIMARY_BLUE,
+    borderColor: PRIMARY_BLUE,
+  },
+
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  checkboxText: {
+    fontSize: 13,
+    color: '#000000',
+    flex: 1,
+  },
+
+  linkText: {
+    color: PRIMARY_BLUE,
+    fontWeight: '600',
+  },
+
+  // Sign Up Button
+  signUpButton: {
     height: BUTTON_HEIGHT,
     backgroundColor: PRIMARY_BLUE,
     borderRadius: 12,
@@ -322,26 +414,34 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  signInButtonText: {
+  signUpButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.8,
   },
 
-  // Divider - light and subtle
+  // Divider
   dividerContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
     marginVertical: 16,
+  },
+
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#D9D9D9',
   },
 
   dividerText: {
     color: '#9E9E9E',
     fontSize: 13,
     fontWeight: '400',
+    marginHorizontal: 12,
   },
 
-  // Social buttons container - compact
+  // Social buttons container
   socialContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -360,24 +460,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Footer - close to bottom
-  signUpContainer: {
+  // Footer
+  signInContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 12,
   },
 
-  signUpText: {
+  signInText: {
     color: '#000000',
     fontSize: 13,
   },
 
-  signUpLink: {
+  signInLink: {
     color: PRIMARY_BLUE,
     fontSize: 13,
     fontWeight: '700',
   },
 });
 
-export default SignInScreen;
+export default SignUpScreen;
