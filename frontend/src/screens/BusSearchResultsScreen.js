@@ -33,6 +33,7 @@ const BUS_DATA = [
     rating: 4.4,
     seatsAvailable: 22,
     price: 680,
+    duration: '8 Hours',
     tag: 'Fastest',
   },
   {
@@ -46,6 +47,7 @@ const BUS_DATA = [
     rating: 4.2,
     seatsAvailable: 15,
     price: 550,
+    duration: '9 Hours 15 Minutes',
     tag: 'Cheapest',
   },
   {
@@ -59,6 +61,7 @@ const BUS_DATA = [
     rating: 4.5,
     seatsAvailable: 8,
     price: 850,
+    duration: '8 Hours 30 Minutes',
     tag: null,
   },
   {
@@ -72,6 +75,7 @@ const BUS_DATA = [
     rating: 4.6,
     seatsAvailable: 12,
     price: 780,
+    duration: '7 Hours 45 Minutes',
     tag: null,
   },
 ];
@@ -80,8 +84,8 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
   const [selectedTab, setSelectedTab] = useState('Fastest');
 
   // Get route params or use defaults
-  const fromCity = route?.params?.from || 'Jaipur';
-  const toCity = route?.params?.to || 'Jodhpur';
+  const from = route?.params?.from || 'Jaipur';
+  const to = route?.params?.to || 'Jodhpur';
   const date = route?.params?.date || '27 Sept 2025';
   const stops = route?.params?.stops || 'Poornawatar → Vulagar pakkam';
 
@@ -98,7 +102,20 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
   };
 
   const handleBusCardPress = (bus) => {
-    console.log('Bus selected:', bus);
+    navigation.navigate('SeatSelection', {
+      busData: {
+        from: from,
+        to: to,
+        date: date,
+        operator: bus.operator,
+        type: bus.busType,
+        departureTime: bus.departureTime,
+        arrivalTime: bus.arrivalTime,
+        rating: bus.rating,
+        price: bus.price,
+        duration: bus.duration || '8 Hours',
+      }
+    });
   };
 
   const renderBusCard = ({ item }) => (
@@ -140,7 +157,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
 
       {/* Journey Timeline Row */}
       <View style={styles.journeyRow}>
-        <View style={styles.journeyPoint}>
+        <View style={styles.journeyPointLeft}>
           <Text style={styles.journeyTime}>{item.departureTime}</Text>
           <Text style={styles.journeyCity} numberOfLines={1}>{item.departureCity}</Text>
         </View>
@@ -154,9 +171,9 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
           </View>
         </View>
 
-        <View style={styles.journeyPoint}>
-          <Text style={styles.journeyTime}>{item.arrivalTime}</Text>
-          <Text style={styles.journeyCity} numberOfLines={1}>{item.arrivalCity}</Text>
+        <View style={styles.journeyPointRight}>
+          <Text style={styles.journeyTimeRight}>{item.arrivalTime}</Text>
+          <Text style={styles.journeyCityRight} numberOfLines={1}>{item.arrivalCity}</Text>
         </View>
       </View>
 
@@ -209,7 +226,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
 
             <View style={styles.headerCenter}>
               <Text style={styles.headerRoute}>
-                {fromCity} To {toCity}
+                {from} To {to}
               </Text>
               <Text style={styles.headerDate}>{date}</Text>
             </View>
@@ -402,7 +419,6 @@ const styles = StyleSheet.create({
 
   tabsContainer: {
     paddingHorizontal: 16,
-    gap: 12,
   },
 
   tab: {
@@ -410,15 +426,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    marginRight: 12,
-    minHeight: 44,
+    width: 135,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowRadius: 3,
     elevation: 2,
   },
 
@@ -426,16 +441,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#5B7EFF',
     shadowColor: '#5B7EFF',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 3,
   },
 
   tabText: {
     color: '#4A4A4A',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
     textAlign: 'center',
   },
 
@@ -446,25 +461,25 @@ const styles = StyleSheet.create({
 
   tabBadge: {
     backgroundColor: '#E5E7EB',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    borderRadius: 9,
+    width: 18,
+    height: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 6,
+    marginLeft: 5,
   },
 
   tabBadgeText: {
     color: '#4A4A4A',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
   },
 
   tabTiming: {
     color: '#4A4A4A',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '400',
-    marginLeft: 6,
+    marginLeft: 5,
   },
 
   tabTimingSelected: {
@@ -586,10 +601,31 @@ const styles = StyleSheet.create({
     maxWidth: 100,
   },
 
+  journeyPointLeft: {
+    flexShrink: 0,
+    minWidth: 80,
+    maxWidth: 100,
+    alignItems: 'flex-start',
+  },
+
+  journeyPointRight: {
+    flexShrink: 0,
+    minWidth: 80,
+    maxWidth: 100,
+    alignItems: 'flex-end',
+  },
+
   journeyTime: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1A1A1A',
+  },
+
+  journeyTimeRight: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    textAlign: 'right',
   },
 
   journeyCity: {
@@ -597,6 +633,14 @@ const styles = StyleSheet.create({
     color: '#666666',
     marginTop: 2,
     flexWrap: 'nowrap',
+  },
+
+  journeyCityRight: {
+    fontSize: 13,
+    color: '#666666',
+    marginTop: 2,
+    flexWrap: 'nowrap',
+    textAlign: 'right',
   },
 
   journeyLine: {
