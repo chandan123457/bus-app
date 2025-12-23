@@ -190,10 +190,15 @@ const HomeScreen = ({ navigation }) => {
 
         {/* Main Content - Fixed Layout */}
         <View style={styles.mainContent}>
-          {/* Main Booking Card */}
-          <View style={styles.bookingCard}>
-            <Text style={styles.bookingTitle}>Book Your Journey</Text>
-            <Text style={styles.bookingSubtitle}>Find and book bus tickets across India.</Text>
+          {/* Card Container for Layered Effect */}
+          <View style={styles.cardContainer}>
+            {/* Background White Card (Layer 1) */}
+            <View style={styles.backgroundCard} />
+            
+            {/* Main Booking Card (Layer 2) */}
+            <View style={styles.bookingCard}>
+              <Text style={styles.bookingTitle}>Book Your Journey</Text>
+              <Text style={styles.bookingSubtitle}>Find and book bus tickets across India.</Text>
 
             {/* Input Fields Container with Swap Button */}
             <View style={{ position: 'relative' }}>
@@ -248,6 +253,7 @@ const HomeScreen = ({ navigation }) => {
             >
               <Text style={styles.searchButtonText}>Search</Text>
             </TouchableOpacity>
+          </View>
           </View>
 
           {/* Quick Action Cards */}
@@ -448,19 +454,38 @@ const styles = StyleSheet.create({
     paddingBottom: 95,
   },
 
-  // Booking card
+  // Card container for layered effect
+  cardContainer: {
+    position: 'relative',
+    marginHorizontal: 30,
+    marginTop: 16,
+    alignSelf: 'center',
+    maxWidth: width - 60,
+  },
+
+  // Background card (visible from bottom)
+  backgroundCard: {
+    position: 'absolute',
+    top: 16,
+    left: 0,
+    right: 0,
+    bottom: -16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+
+  // Booking card (front layer)
   bookingCard: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    marginHorizontal: 20,
-    marginTop: 0,
-    padding: 24,
-    paddingBottom: 28,
-    maxWidth: width - 40,
-    alignSelf: 'center',
+    borderRadius: 20,
+    padding: 16,
+    paddingBottom: 20,
+    zIndex: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -469,17 +494,17 @@ const styles = StyleSheet.create({
   },
 
   bookingTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1A1A1A',
     marginBottom: 4,
   },
 
   bookingSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
     fontWeight: '400',
-    marginBottom: 20,
+    marginBottom: 14,
   },
 
   inputContainer: {
@@ -489,15 +514,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    paddingLeft: 14,
-    paddingRight: 14,
-    marginBottom: 14,
-    height: 52,
+    paddingLeft: 12,
+    paddingRight: 12,
+    marginBottom: 10,
+    height: 48,
   },
 
   input: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 10,
     fontSize: 14,
     fontWeight: '500',
     color: '#1A1A1A',
@@ -509,13 +534,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignSelf: 'center',
     left: '50%',
-    marginLeft: -23,
-    marginTop: 33,
+    marginLeft: -20,
+    marginTop: 29,
     zIndex: 10,
     backgroundColor: '#FFFFFF',
-    borderRadius: 23,
-    width: 46,
-    height: 46,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -533,14 +558,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    paddingLeft: 14,
-    paddingRight: 14,
-    marginBottom: 20,
-    height: 52,
+    paddingLeft: 12,
+    paddingRight: 12,
+    marginBottom: 14,
+    height: 48,
   },
 
   dateText: {
-    marginLeft: 12,
+    marginLeft: 10,
     fontSize: 14,
     fontWeight: '500',
     color: '#1A1A1A',
@@ -548,19 +573,19 @@ const styles = StyleSheet.create({
   },
 
   addReturnText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#9CA3AF',
     fontWeight: '400',
   },
 
   searchButton: {
     backgroundColor: '#4A90E2',
-    borderRadius: 26,
+    borderRadius: 24,
     paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 52,
-    marginTop: 20,
+    height: 48,
+    marginTop: 14,
     marginBottom: 0,
     shadowColor: 'rgba(74, 144, 226, 0.3)',
     shadowOffset: { width: 0, height: 2 },
@@ -580,7 +605,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     paddingHorizontal: 20,
-    marginTop: 24,
+    marginTop: 20,
     alignItems: 'flex-start',
     gap: 20,
   },
