@@ -146,11 +146,12 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
         </View>
 
         <View style={styles.journeyLine}>
-          <View style={styles.dottedLine} />
-          <View style={styles.busIconContainer}>
-            <Text style={styles.busIcon}>🚌</Text>
+          <View style={styles.dottedLineContainer}>
+            <View style={styles.dottedLine} />
+            <View style={styles.busIconContainer}>
+              <Text style={styles.busIcon}>🚌</Text>
+            </View>
           </View>
-          <View style={styles.dottedLine} />
         </View>
 
         <View style={styles.journeyPoint}>
@@ -158,6 +159,9 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
           <Text style={styles.journeyCity}>{item.arrivalCity}</Text>
         </View>
       </View>
+
+      {/* Divider Line */}
+      <View style={styles.dividerLine} />
 
       {/* Bottom Metadata Row */}
       <View style={styles.metadataRow}>
@@ -310,7 +314,7 @@ const styles = StyleSheet.create({
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 128, 128, 0.75)', // Semi-transparent teal/blue overlay 75%
+    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Dark teal overlay matching reference
   },
 
   safeArea: {
@@ -320,7 +324,7 @@ const styles = StyleSheet.create({
   // Header Bar ~60-70px height
   header: {
     height: 70,
-    backgroundColor: 'rgba(0, 64, 64, 0.6)', // Semi-transparent dark teal
+    backgroundColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -349,13 +353,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
 
   headerDate: {
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: 'rgba(255, 255, 255, 0.75)',
     fontSize: 13,
     fontWeight: '400',
-    marginTop: 2,
+    marginTop: 3,
   },
 
   changeButton: {
@@ -374,77 +379,94 @@ const styles = StyleSheet.create({
   // Breadcrumb/Stops
   breadcrumbContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(0, 64, 64, 0.4)',
+    paddingVertical: 6,
+    backgroundColor: 'transparent',
   },
 
   breadcrumbText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 11,
     textAlign: 'center',
+    fontWeight: '400',
   },
 
-  // Filter Tabs - 12px from header
+  // Filter Tabs - spacing from breadcrumb
   tabsScrollView: {
     maxHeight: 60,
     backgroundColor: 'transparent',
-    marginTop: 12,
+    marginTop: 8,
   },
 
   tabsContainer: {
     paddingHorizontal: 16,
-    gap: 8,
+    gap: 12,
   },
 
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    marginRight: 12,
+    minHeight: 44,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   tabSelected: {
-    backgroundColor: '#4A7EFF',
+    backgroundColor: '#5B7EFF',
+    shadowColor: '#5B7EFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
   tabText: {
-    color: '#666666',
+    color: '#4A4A4A',
     fontSize: 14,
     fontWeight: '500',
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
 
   tabTextSelected: {
     color: '#FFFFFF',
+    fontWeight: '600',
   },
 
   tabBadge: {
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#E5E7EB',
     borderRadius: 10,
-    width: 20,
-    height: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 6,
   },
 
   tabBadgeText: {
-    color: '#666666',
-    fontSize: 11,
-    fontWeight: '600',
+    color: '#4A4A4A',
+    fontSize: 12,
+    fontWeight: '500',
   },
 
   tabTiming: {
-    color: '#666666',
-    fontSize: 12,
+    color: '#4A4A4A',
+    fontSize: 14,
     fontWeight: '400',
     marginLeft: 6,
   },
 
   tabTimingSelected: {
     color: '#FFFFFF',
+    fontWeight: '500',
   },
 
   // Main Content Area
@@ -463,14 +485,16 @@ const styles = StyleSheet.create({
   // Bus Card Component
   busCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 15,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
 
   // Card Header Row
@@ -549,7 +573,7 @@ const styles = StyleSheet.create({
   journeyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
 
   journeyPoint: {
@@ -570,13 +594,20 @@ const styles = StyleSheet.create({
 
   journeyLine: {
     flex: 1.5,
-    flexDirection: 'row',
+    marginHorizontal: 12,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 8,
+  },
+
+  dottedLineContainer: {
+    width: '100%',
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   dottedLine: {
-    flex: 1,
+    width: '100%',
     height: 1,
     borderStyle: 'dotted',
     borderWidth: 1,
@@ -584,15 +615,27 @@ const styles = StyleSheet.create({
   },
 
   busIconContainer: {
-    width: 16,
-    height: 16,
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    top: -11.5,
   },
 
   busIcon: {
     fontSize: 14,
     color: '#999999',
+    textAlign: 'center',
+  },
+
+  // Divider Line
+  dividerLine: {
+    height: 1,
+    backgroundColor: '#E8E8E8',
+    marginBottom: 12,
   },
 
   // Bottom Metadata Row
@@ -608,7 +651,7 @@ const styles = StyleSheet.create({
   },
 
   starIcon: {
-    color: '#FFC107',
+    color: '#FFB800',
     fontSize: 14,
     marginRight: 4,
   },
@@ -628,7 +671,7 @@ const styles = StyleSheet.create({
   seatIcon: {
     fontSize: 14,
     marginRight: 4,
-    color: '#4A90E2',
+    color: '#5B7EFF',
   },
 
   seats: {
