@@ -29,37 +29,37 @@ const { width, height } = Dimensions.get('window');
 
 // Custom SVG Icons
 const BusIcon = ({ color = '#666' }) => (
-  <Svg width="20" height="20" viewBox="0 0 24 24">
+  <Svg width="22" height="22" viewBox="0 0 24 24">
     <Path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z" fill={color}/>
   </Svg>
 );
 
 const SwapIcon = () => (
-  <Svg width="18" height="18" viewBox="0 0 24 24">
+  <Svg width="20" height="20" viewBox="0 0 24 24">
     <Path d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z" fill="#4A90E2"/>
   </Svg>
 );
 
 const CalendarIcon = () => (
-  <Svg width="20" height="20" viewBox="0 0 24 24">
+  <Svg width="22" height="22" viewBox="0 0 24 24">
     <Path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" fill="#4A90E2"/>
   </Svg>
 );
 
 const BookingIcon = () => (
-  <Svg width="30" height="30" viewBox="0 0 24 24">
+  <Svg width="32" height="32" viewBox="0 0 24 24">
     <Path d="M22 10V6c0-1.11-.9-2-2-2H4c-1.1 0-1.99.89-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-2-1.46c-1.19.69-2 1.99-2 3.46s.81 2.77 2 3.46V18H4v-2.54c1.19-.69 2-1.99 2-3.46 0-1.48-.8-2.77-1.99-3.46L4 6h16v2.54zM9 8h2v8H9zm4 0h2v8h-2z" fill="#4A90E2"/>
   </Svg>
 );
 
 const OfferIcon = () => (
-  <Svg width="30" height="30" viewBox="0 0 24 24">
+  <Svg width="32" height="32" viewBox="0 0 24 24">
     <Path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z" fill="#4A90E2"/>
   </Svg>
 );
 
 const SupportIcon = () => (
-  <Svg width="30" height="30" viewBox="0 0 24 24">
+  <Svg width="32" height="32" viewBox="0 0 24 24">
     <Path d="M12 1c-4.97 0-9 4.03-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7c0-4.97-4.03-9-9-9z" fill="#4A90E2"/>
   </Svg>
 );
@@ -190,13 +190,8 @@ const HomeScreen = ({ navigation }) => {
 
         {/* Main Content - Fixed Layout */}
         <View style={styles.mainContent}>
-          {/* Card Container for Layered Effect */}
-          <View style={styles.cardContainer}>
-            {/* Background White Card (Layer 1) */}
-            <View style={styles.backgroundCard} />
-            
-            {/* Main Booking Card (Layer 2) */}
-            <View style={styles.bookingCard}>
+          {/* Main Booking Card */}
+          <View style={styles.bookingCard}>
               <Text style={styles.bookingTitle}>Book Your Journey</Text>
               <Text style={styles.bookingSubtitle}>Find and book bus tickets across India.</Text>
 
@@ -253,7 +248,6 @@ const HomeScreen = ({ navigation }) => {
             >
               <Text style={styles.searchButtonText}>Search</Text>
             </TouchableOpacity>
-          </View>
           </View>
 
           {/* Quick Action Cards */}
@@ -373,19 +367,19 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#F5F7F9',
   },
 
   // Header styles with background image and dark teal overlay
   header: {
-    height: 130,
+    height: 200,
     width: width,
     paddingBottom: 24,
   },
 
   headerOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(44, 95, 111, 0.85)',
+    backgroundColor: 'rgba(44, 95, 111, 0.80)',
   },
 
   headerContent: {
@@ -401,17 +395,17 @@ const styles = StyleSheet.create({
   },
 
   logoCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   logoImage: {
-    width: 30,
-    height: 30,
+    width: 36,
+    height: 36,
   },
 
   headerTextContainer: {
@@ -421,7 +415,7 @@ const styles = StyleSheet.create({
   },
 
   appName: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.5,
@@ -429,15 +423,15 @@ const styles = StyleSheet.create({
   },
 
   appSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 2,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 4,
   },
 
   profileCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -445,8 +439,8 @@ const styles = StyleSheet.create({
   },
 
   profileImage: {
-    width: 50,
-    height: 50,
+    width: 60,
+    height: 60,
   },
 
   // Main content
@@ -454,77 +448,53 @@ const styles = StyleSheet.create({
     paddingBottom: 95,
   },
 
-  // Card container for layered effect
-  cardContainer: {
-    position: 'relative',
-    marginHorizontal: 30,
-    marginTop: 16,
-    alignSelf: 'center',
-    maxWidth: width - 60,
-  },
-
-  // Background card (visible from bottom)
-  backgroundCard: {
-    position: 'absolute',
-    top: 16,
-    left: 0,
-    right: 0,
-    bottom: -16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-
-  // Booking card (front layer)
+  // Booking card
   bookingCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 16,
-    paddingBottom: 20,
-    zIndex: 1,
+    padding: 24,
+    marginHorizontal: 16,
+    marginTop: -40,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+    zIndex: 10,
   },
 
   bookingTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: '#1A1A1A',
-    marginBottom: 4,
+    marginBottom: 8,
   },
 
   bookingSubtitle: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#6B7280',
     fontWeight: '400',
-    marginBottom: 14,
+    marginBottom: 24,
   },
 
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
+    backgroundColor: '#F7F8FA',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingLeft: 12,
-    paddingRight: 12,
-    marginBottom: 10,
-    height: 48,
+    borderColor: '#E8EAED',
+    paddingLeft: 16,
+    paddingRight: 16,
+    marginBottom: 14,
+    height: 52,
   },
 
   input: {
     flex: 1,
-    marginLeft: 10,
-    fontSize: 14,
-    fontWeight: '500',
+    marginLeft: 12,
+    fontSize: 15,
+    fontWeight: '400',
     color: '#1A1A1A',
     paddingVertical: 0,
     textAlignVertical: 'center',
@@ -534,18 +504,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignSelf: 'center',
     left: '50%',
-    marginLeft: -20,
-    marginTop: 29,
-    zIndex: 10,
+    marginLeft: -24,
+    marginTop: 33,
+    zIndex: 20,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
+    borderRadius: 24,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#F7F8FA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 5,
   },
@@ -554,49 +526,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
+    backgroundColor: '#F7F8FA',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingLeft: 12,
-    paddingRight: 12,
-    marginBottom: 14,
-    height: 48,
+    borderColor: '#E8EAED',
+    paddingLeft: 16,
+    paddingRight: 16,
+    marginBottom: 20,
+    height: 52,
   },
 
   dateText: {
-    marginLeft: 10,
-    fontSize: 14,
+    marginLeft: 12,
+    fontSize: 15,
     fontWeight: '500',
     color: '#1A1A1A',
     flex: 1,
   },
 
   addReturnText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#9CA3AF',
     fontWeight: '400',
   },
 
   searchButton: {
     backgroundColor: '#4A90E2',
-    borderRadius: 24,
+    borderRadius: 27,
     paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
-    marginTop: 14,
+    height: 54,
+    marginTop: 20,
     marginBottom: 0,
     shadowColor: 'rgba(74, 144, 226, 0.3)',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 5,
   },
 
   searchButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '500',
   },
 
@@ -604,10 +576,10 @@ const styles = StyleSheet.create({
   quickActionsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    marginTop: 20,
+    paddingHorizontal: 16,
+    marginTop: 28,
     alignItems: 'flex-start',
-    gap: 20,
+    gap: 16,
   },
 
   quickActionWrapper: {
@@ -616,12 +588,13 @@ const styles = StyleSheet.create({
 
   quickActionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 38,
+    borderRadius: 16,
     padding: 16,
+    paddingBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 76,
-    height: 76,
+    width: 80,
+    height: 80,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -631,18 +604,19 @@ const styles = StyleSheet.create({
 
   quickActionLabel: {
     fontSize: 12,
-    fontWeight: '400',
+    fontWeight: '500',
     color: '#374151',
     marginTop: 8,
     textAlign: 'center',
+    lineHeight: 16,
   },
 
   // Offer banner
   offerBanner: {
-    backgroundColor: '#E8F4F8',
+    backgroundColor: '#E6F3F8',
     borderRadius: 14,
-    marginHorizontal: 20,
-    marginTop: 24,
+    marginHorizontal: 16,
+    marginTop: 20,
     padding: 18,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -650,8 +624,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
     elevation: 1,
   },
 
@@ -660,17 +634,17 @@ const styles = StyleSheet.create({
   },
 
   offerTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '700',
     color: '#2C5F6F',
-    marginBottom: 4,
+    marginBottom: 2,
   },
 
   offerSubtitle: {
     fontSize: 12,
     color: '#64748B',
     fontWeight: '400',
-    marginBottom: 4,
+    marginBottom: 2,
   },
 
   couponContainer: {
@@ -679,18 +653,18 @@ const styles = StyleSheet.create({
   },
 
   couponLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748B',
     fontWeight: '400',
   },
 
   couponCode: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#2C5F6F',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 2,
     borderRadius: 4,
   },
 
@@ -711,9 +685,9 @@ const styles = StyleSheet.create({
     height: 70,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 10,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
   navItem: {
@@ -725,7 +699,7 @@ const styles = StyleSheet.create({
   navLabel: {
     fontSize: 11,
     color: 'rgba(255, 255, 255, 0.6)',
-    marginTop: 5,
+    marginTop: 4,
     fontWeight: '400',
   },
 
