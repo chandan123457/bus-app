@@ -60,6 +60,8 @@ const SignUpScreen = ({ navigation }) => {
 
   const handleSignUp = () => {
     console.log('Sign up:', { name, email, password, confirmPassword, agreedToTerms });
+    // Navigate to Sign In screen after successful signup
+    navigation.navigate('SignIn');
   };
 
   const handleSocialLogin = (provider) => {

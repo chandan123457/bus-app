@@ -10,6 +10,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LandingScreen from '../screens/LandingScreen';
 import SignInScreen from '../screens/SignInScreen';
 import SignUpScreen from '../screens/SignUpScreen';
+import HomeScreen from '../screens/HomeScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -50,6 +51,15 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="SignUp" 
           component={SignUpScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+
+        {/* Home / Dashboard Screen */}
+        <Stack.Screen 
+          name="Home" 
+          component={HomeScreen}
           options={{
             animation: 'slide_from_right',
           }}

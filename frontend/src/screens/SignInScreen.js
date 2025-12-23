@@ -60,6 +60,8 @@ const SignInScreen = ({ navigation }) => {
 
   const handleSignIn = () => {
     console.log('Sign in:', { email, password });
+    // Navigate to Home screen after successful signin
+    navigation.navigate('Home');
   };
 
   const handleSocialLogin = (provider) => {
