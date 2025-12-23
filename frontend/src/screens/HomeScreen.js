@@ -198,8 +198,13 @@ const HomeScreen = ({ navigation }) => {
 
         {/* Main Content - Static Layout */}
         <View style={styles.mainContent}>
-          {/* Main Booking Card */}
-          <View style={styles.bookingCard}>
+          {/* Card Container for Layered Effect */}
+          <View style={styles.cardContainer}>
+            {/* Background White Card (Layer 1) */}
+            <View style={styles.backgroundCard} />
+            
+            {/* Main Booking Card (Layer 2) */}
+            <View style={styles.bookingCard}>
               <Text style={styles.bookingTitle}>Book Your Journey</Text>
               <Text style={styles.bookingSubtitle}>Find and book bus tickets across India.</Text>
 
@@ -256,6 +261,7 @@ const HomeScreen = ({ navigation }) => {
             >
               <Text style={styles.searchButtonText}>Search</Text>
             </TouchableOpacity>
+          </View>
           </View>
 
           {/* Quick Action Cards */}
@@ -457,19 +463,42 @@ const styles = StyleSheet.create({
     paddingBottom: 78,
   },
 
+  // Card container for layered effect
+  cardContainer: {
+    position: 'relative',
+    marginHorizontal: 18,
+    marginTop: -25,
+    alignSelf: 'center',
+    maxWidth: width - 36,
+  },
+
+  // Background card (visible from bottom)
+  backgroundCard: {
+    position: 'absolute',
+    top: 10,
+    left: 0,
+    right: 0,
+    bottom: -10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+
   // Booking card
   bookingCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 12,
-    marginHorizontal: 16,
-    marginTop: -25,
+    zIndex: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
-    zIndex: 10,
+    shadowRadius: 10,
+    elevation: 5,
   },
 
   bookingTitle: {
@@ -561,11 +590,11 @@ const styles = StyleSheet.create({
 
   searchButton: {
     backgroundColor: '#4A90E2',
-    borderRadius: 23,
+    borderRadius: 22,
     paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 46,
+    height: 44,
     marginTop: 8,
     marginBottom: 0,
     shadowColor: 'rgba(74, 144, 226, 0.3)',
