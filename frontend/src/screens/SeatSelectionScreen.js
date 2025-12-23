@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -90,17 +90,19 @@ const SeatSelectionScreen = ({ navigation, route }) => {
   );
 
   return (
-    <SafeAreaView style={styles.safeContainer} edges={['top']}>
+    <View style={styles.mainContainer}>
       <StatusBar hidden />
-      <View style={styles.mainContainer}>
-        {/* Top 25% - Background Image with Header */}
-        <ImageBackground
-          source={require('../../assets/landing-background.jpg')}
-          style={styles.topSection}
-          resizeMode="cover"
-        >
-          <View style={styles.overlay} />
-          
+      
+      {/* Top 25% - Background Image with Header (Full-bleed from top) */}
+      <ImageBackground
+        source={require('../../assets/landing-background.jpg')}
+        style={styles.topSection}
+        resizeMode="cover"
+      >
+        <View style={styles.overlay} />
+        
+        {/* SafeArea only for header content */}
+        <SafeAreaView edges={['top']} style={{ flex: 1 }}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity
@@ -120,7 +122,8 @@ const SeatSelectionScreen = ({ navigation, route }) => {
             
             <View style={styles.headerPlaceholder} />
           </View>
-        </ImageBackground>
+        </SafeAreaView>
+      </ImageBackground>
 
         {/* Scrollable Content - Overlapping the image */}
         <ScrollView 
@@ -151,7 +154,7 @@ const SeatSelectionScreen = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Seat Status Legend */}
+        {/* Seat Status Legend - Direct on white background */}
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}>
             <View style={[styles.legendBox, { backgroundColor: '#E8E8E8' }]} />
@@ -169,10 +172,8 @@ const SeatSelectionScreen = ({ navigation, route }) => {
 
         {/* Seat Layout */}
         <View style={styles.seatLayoutContainer}>
-          {/* Steering Wheel */}
-          <View style={styles.steeringContainer}>
-            <Ionicons name="navigate-circle" size={32} color="#2C2C2C" />
-          </View>
+          {/* Steering Wheel / Driver Icon - Plain with transparent background */}
+          <MaterialCommunityIcons name="steering" size={28} color="#2C2C2C" style={styles.steeringIcon} />
 
           {/* Seats Grid */}
           <View style={styles.seatsGrid}>
@@ -184,8 +185,8 @@ const SeatSelectionScreen = ({ navigation, route }) => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Continue Button - Fixed at bottom */}
-      <View style={styles.bottomButtonContainer}>
+      {/* Continue Button - Direct on white background */}
+      <View style={styles.buttonWrapper}>
         <TouchableOpacity
           style={styles.continueButton}
           activeOpacity={0.8}
@@ -195,20 +196,15 @@ const SeatSelectionScreen = ({ navigation, route }) => {
           }}
         >
           <Text style={styles.continueButtonText}>
-            Continue ({selectedSeats.length} {selectedSeats.length === 1 ? 'Seat' : 'Seats'})
+            Continue
           </Text>
         </TouchableOpacity>
       </View>
-      </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeContainer: {
-    flex: 1,
-    backgroundColor: '#2B636E',
-  },
   mainContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -237,7 +233,6 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     marginTop: 0,
   },
-
   // Header Styles
   header: {
     flexDirection: 'row',
@@ -341,46 +336,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 16,
+    marginTop: 20,
+    marginBottom: 20,
     paddingHorizontal: 16,
-    paddingVertical: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 12,
+    marginHorizontal: 10,
   },
   legendBox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 3,
     marginRight: 6,
   },
   legendText: {
-    fontSize: 13,
-    color: '#2C2C2C',
+    fontSize: 12,
+    color: '#4A4A4A',
     fontWeight: '500',
   },
 
   // Seat Layout Styles
   seatLayoutContainer: {
-    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 0,
     borderRadius: 12,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: '#F8F8F8',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
   },
-  steeringContainer: {
-    alignItems: 'flex-end',
-    marginBottom: 16,
-    paddingRight: 8,
+  steeringIcon: {
+    alignSelf: 'flex-end',
+    marginBottom: 12,
+    marginRight: 12,
+    backgroundColor: 'transparent',
   },
   seatsGrid: {
     alignItems: 'center',
@@ -412,7 +404,7 @@ const styles = StyleSheet.create({
   },
 
   // Bottom Button Styles
-  bottomButtonContainer: {
+  buttonWrapper: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -420,15 +412,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
   },
   continueButton: {
     backgroundColor: '#5B7EFF',
-    borderRadius: 25,
-    height: 50,
+    borderRadius: 18,
+    height: 40,
+    paddingHorizontal: 60,
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
     shadowColor: '#5B7EFF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
