@@ -142,7 +142,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
       <View style={styles.journeyRow}>
         <View style={styles.journeyPoint}>
           <Text style={styles.journeyTime}>{item.departureTime}</Text>
-          <Text style={styles.journeyCity}>{item.departureCity}</Text>
+          <Text style={styles.journeyCity} numberOfLines={1}>{item.departureCity}</Text>
         </View>
 
         <View style={styles.journeyLine}>
@@ -156,7 +156,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
 
         <View style={styles.journeyPoint}>
           <Text style={styles.journeyTime}>{item.arrivalTime}</Text>
-          <Text style={styles.journeyCity}>{item.arrivalCity}</Text>
+          <Text style={styles.journeyCity} numberOfLines={1}>{item.arrivalCity}</Text>
         </View>
       </View>
 
@@ -165,16 +165,19 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
 
       {/* Bottom Metadata Row */}
       <View style={styles.metadataRow}>
-        <View style={styles.metadataLeft}>
+        {/* Left: Rating */}
+        <View style={styles.ratingContainer}>
           <Text style={styles.starIcon}>★</Text>
           <Text style={styles.rating}>{item.rating}</Text>
-
-          <View style={styles.seatsContainer}>
-            <Text style={styles.seatIcon}>👤</Text>
-            <Text style={styles.seats}>{item.seatsAvailable}</Text>
-          </View>
         </View>
 
+        {/* Center: Passenger Count */}
+        <View style={styles.seatsContainer}>
+          <Text style={styles.seatIcon}>👤</Text>
+          <Text style={styles.seats}>{item.seatsAvailable}</Text>
+        </View>
+
+        {/* Right: Price */}
         <Text style={styles.price}>₹ {item.price}</Text>
       </View>
     </TouchableOpacity>
@@ -573,11 +576,14 @@ const styles = StyleSheet.create({
   journeyRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 14,
   },
 
   journeyPoint: {
-    flex: 1,
+    flexShrink: 0,
+    minWidth: 80,
+    maxWidth: 100,
   },
 
   journeyTime: {
@@ -590,13 +596,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666666',
     marginTop: 2,
+    flexWrap: 'nowrap',
   },
 
   journeyLine: {
-    flex: 1.5,
-    marginHorizontal: 12,
+    flex: 1,
+    marginHorizontal: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    minWidth: 60,
   },
 
   dottedLineContainer: {
@@ -641,13 +649,16 @@ const styles = StyleSheet.create({
   // Bottom Metadata Row
   metadataRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    width: '100%',
   },
 
-  metadataLeft: {
+  // Left: Rating Container (33.333% width)
+  ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '33.333%',
+    justifyContent: 'flex-start',
   },
 
   starIcon: {
@@ -665,7 +676,8 @@ const styles = StyleSheet.create({
   seatsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 16,
+    justifyContent: 'center',
+    width: '33.333%',
   },
 
   seatIcon: {
@@ -684,6 +696,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#1A1A1A',
+    width: '33.333%',
+    textAlign: 'right',
   },
 });
 
