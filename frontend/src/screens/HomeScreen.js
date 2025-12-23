@@ -65,7 +65,7 @@ const SupportIcon = () => (
 );
 
 const PercentIcon = () => (
-  <Svg width="56" height="56" viewBox="0 0 24 24">
+  <Svg width="38" height="38" viewBox="0 0 24 24">
     <Circle cx="6.5" cy="6.5" r="2.5" fill="#4A90E2"/>
     <Circle cx="17.5" cy="17.5" r="2.5" fill="#4A90E2"/>
     <Path d="M19 5L5 19" stroke="#4A90E2" strokeWidth="2.5" strokeLinecap="round"/>
@@ -172,7 +172,15 @@ const HomeScreen = ({ navigation }) => {
               
               {/* Center: App Name and Subtitle */}
               <View style={styles.headerTextContainer}>
-                <Text style={styles.appName} numberOfLines={1}>GO GANTABYA</Text>
+                <Text 
+                  style={styles.appName} 
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  GO GANTABYA
+                </Text>
                 <Text style={styles.appSubtitle}>Best and cheapest</Text>
               </View>
               
@@ -188,7 +196,7 @@ const HomeScreen = ({ navigation }) => {
           </SafeAreaView>
         </ImageBackground>
 
-        {/* Main Content - Fixed Layout */}
+        {/* Main Content - Static Layout */}
         <View style={styles.mainContent}>
           {/* Main Booking Card */}
           <View style={styles.bookingCard}>
@@ -260,7 +268,7 @@ const HomeScreen = ({ navigation }) => {
               >
                 <BookingIcon />
               </TouchableOpacity>
-              <Text style={styles.quickActionLabel}>My Bookings</Text>
+              <Text style={styles.quickActionLabel}>My{"\n"}Bookings</Text>
             </View>
 
             <View style={styles.quickActionWrapper}>
@@ -372,9 +380,9 @@ const styles = StyleSheet.create({
 
   // Header styles with background image and dark teal overlay
   header: {
-    height: 200,
+    height: 160,
     width: width,
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
 
   headerOverlay: {
@@ -412,6 +420,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     marginRight: 12,
+    justifyContent: 'center',
   },
 
   appName: {
@@ -445,16 +454,16 @@ const styles = StyleSheet.create({
 
   // Main content
   mainContent: {
-    paddingBottom: 95,
+    paddingBottom: 78,
   },
 
   // Booking card
   bookingCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 24,
+    padding: 12,
     marginHorizontal: 16,
-    marginTop: -40,
+    marginTop: -25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -467,14 +476,14 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#1A1A1A',
-    marginBottom: 8,
+    marginBottom: 2,
   },
 
   bookingSubtitle: {
     fontSize: 15,
     color: '#6B7280',
     fontWeight: '400',
-    marginBottom: 24,
+    marginBottom: 10,
   },
 
   inputContainer: {
@@ -486,8 +495,8 @@ const styles = StyleSheet.create({
     borderColor: '#E8EAED',
     paddingLeft: 16,
     paddingRight: 16,
-    marginBottom: 14,
-    height: 52,
+    marginBottom: 7,
+    height: 46,
   },
 
   input: {
@@ -504,13 +513,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignSelf: 'center',
     left: '50%',
-    marginLeft: -24,
-    marginTop: 33,
+    marginLeft: -22,
+    marginTop: 26.5,
     zIndex: 20,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    width: 48,
-    height: 48,
+    borderRadius: 22,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -532,8 +541,8 @@ const styles = StyleSheet.create({
     borderColor: '#E8EAED',
     paddingLeft: 16,
     paddingRight: 16,
-    marginBottom: 20,
-    height: 52,
+    marginBottom: 10,
+    height: 46,
   },
 
   dateText: {
@@ -552,12 +561,12 @@ const styles = StyleSheet.create({
 
   searchButton: {
     backgroundColor: '#4A90E2',
-    borderRadius: 27,
+    borderRadius: 23,
     paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 54,
-    marginTop: 20,
+    height: 46,
+    marginTop: 8,
     marginBottom: 0,
     shadowColor: 'rgba(74, 144, 226, 0.3)',
     shadowOffset: { width: 0, height: 4 },
@@ -577,24 +586,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     paddingHorizontal: 16,
-    marginTop: 28,
+    marginTop: 12,
     alignItems: 'flex-start',
-    gap: 16,
+    gap: 14,
   },
 
   quickActionWrapper: {
     alignItems: 'center',
+    maxWidth: 72,
   },
 
   quickActionCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
-    paddingBottom: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 80,
-    height: 80,
+    width: 72,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -606,7 +615,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#374151',
-    marginTop: 8,
+    marginTop: 4,
     textAlign: 'center',
     lineHeight: 16,
   },
@@ -616,16 +625,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#E6F3F8',
     borderRadius: 14,
     marginHorizontal: 16,
-    marginTop: 20,
-    padding: 18,
-    paddingHorizontal: 20,
+    marginTop: 8,
+    padding: 12,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 3,
+    shadowRadius: 6,
     elevation: 1,
   },
 
@@ -634,17 +643,17 @@ const styles = StyleSheet.create({
   },
 
   offerTitle: {
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '700',
     color: '#2C5F6F',
-    marginBottom: 2,
+    marginBottom: 3,
   },
 
   offerSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748B',
     fontWeight: '400',
-    marginBottom: 2,
+    marginBottom: 3,
   },
 
   couponContainer: {
@@ -660,7 +669,7 @@ const styles = StyleSheet.create({
 
   couponCode: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#2C5F6F',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 8,
@@ -669,7 +678,14 @@ const styles = StyleSheet.create({
   },
 
   offerIconContainer: {
-    marginLeft: 10,
+    marginLeft: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '12deg' }],
   },
 
   // Bottom navigation
