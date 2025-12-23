@@ -8,6 +8,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LandingScreen from '../screens/LandingScreen';
+import SignInScreen from '../screens/SignInScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -35,16 +36,14 @@ const AppNavigator = () => {
           }}
         />
         
-        {/* Add more screens here as you build them */}
-        {/* Example:
+        {/* Sign In Screen */}
         <Stack.Screen 
-          name="Home" 
-          component={HomeScreen}
+          name="SignIn" 
+          component={SignInScreen}
           options={{
             animation: 'slide_from_right',
           }}
         />
-        */}
       </Stack.Navigator>
     </NavigationContainer>
   );

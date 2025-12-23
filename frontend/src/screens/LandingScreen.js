@@ -38,16 +38,14 @@ const { width, height } = Dimensions.get('window');
  */
 const LandingScreen = ({ navigation }) => {
   /**
-   * Auto-navigation after splash delay (optional)
-   * Uncomment when you have the next screen ready
+   * Auto-navigation to SignIn after splash delay
    */
   useEffect(() => {
-    // Auto-navigate after 3 seconds
-    // const timer = setTimeout(() => {
-    //   navigation.replace('Home');
-    // }, 3000);
+    const timer = setTimeout(() => {
+      navigation.replace('SignIn');
+    }, 2500);
     
-    // return () => clearTimeout(timer);
+    return () => clearTimeout(timer);
   }, [navigation]);
 
   return (
