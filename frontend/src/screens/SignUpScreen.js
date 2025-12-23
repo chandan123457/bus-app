@@ -22,9 +22,6 @@ import {
   Image,
   StyleSheet,
   Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -93,17 +90,8 @@ const SignUpScreen = ({ navigation }) => {
         <View style={styles.overlay} />
         
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.flex}
-          >
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              bounces={false}
-            >
-              {/* Logo Circle - overlapping card top */}
+          <View style={styles.container}>
+            {/* Logo Circle - overlapping card top */}
               <View style={styles.logoContainer}>
                 <View style={styles.logoCircle}>
                   <Image
@@ -240,21 +228,20 @@ const SignUpScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 </View>
               </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
+            </View>
         </SafeAreaView>
       </ImageBackground>
     </>
   );
 };
 
-// Design constants - matching Sign In screen
-const LOGO_CIRCLE_SIZE = 90;
+// Design constants - compact for no-scroll layout
+const LOGO_CIRCLE_SIZE = 75;
 const CARD_TOP_RADIUS = 32;
 const CARD_BOTTOM_RADIUS = 45;
-const INPUT_HEIGHT = 48;
-const BUTTON_HEIGHT = 50;
-const SOCIAL_BUTTON_SIZE = 56;
+const INPUT_HEIGHT = 44;
+const BUTTON_HEIGHT = 46;
+const SOCIAL_BUTTON_SIZE = 50;
 const PRIMARY_BLUE = '#4B7BF5';
 
 const styles = StyleSheet.create({
@@ -277,11 +264,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  scrollContent: {
-    flexGrow: 1,
+  container: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
   },
 
   // Logo positioned to overlap card top
@@ -318,9 +304,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: CARD_TOP_RADIUS,
     borderBottomLeftRadius: CARD_BOTTOM_RADIUS,
     borderBottomRightRadius: CARD_BOTTOM_RADIUS,
-    paddingTop: (LOGO_CIRCLE_SIZE / 2) + 20,
-    paddingHorizontal: 22,
-    paddingBottom: 20,
+    paddingTop: (LOGO_CIRCLE_SIZE / 2) + 14,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.06,
@@ -330,19 +316,19 @@ const styles = StyleSheet.create({
 
   // Title
   heading: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: '#000000',
     textAlign: 'left',
-    marginBottom: 18,
+    marginBottom: 10,
   },
 
   // Input label
   label: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#000000',
-    marginBottom: 7,
+    marginBottom: 5,
     textAlign: 'left',
   },
 
@@ -350,19 +336,19 @@ const styles = StyleSheet.create({
   input: {
     height: INPUT_HEIGHT,
     backgroundColor: '#F0F0F0',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 14,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 13,
     color: '#000000',
-    marginBottom: 14,
+    marginBottom: 8,
   },
 
   // Checkbox container
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
-    marginBottom: 16,
+    marginTop: 2,
+    marginBottom: 10,
   },
 
   checkbox: {
@@ -403,10 +389,10 @@ const styles = StyleSheet.create({
   signUpButton: {
     height: BUTTON_HEIGHT,
     backgroundColor: PRIMARY_BLUE,
-    borderRadius: 12,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 2,
     shadowColor: PRIMARY_BLUE,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
@@ -425,7 +411,7 @@ const styles = StyleSheet.create({
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 16,
+    marginVertical: 10,
   },
 
   dividerLine: {
@@ -446,7 +432,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
     paddingHorizontal: 30,
   },
 
@@ -465,7 +451,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 6,
   },
 
   signInText: {
