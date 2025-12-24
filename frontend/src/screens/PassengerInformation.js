@@ -41,7 +41,13 @@ const PassengerInformation = ({ navigation, route }) => {
   const handleProceed = () => {
     console.log('Passengers:', passengers);
     console.log('Contact:', contactDetails);
-    // Navigate to payment or next screen
+    // Navigate to payment screen
+    navigation.navigate('Payment', {
+      busData: busData,
+      selectedSeats: selectedSeats,
+      passengers: passengers,
+      contactDetails: contactDetails,
+    });
   };
 
   return (
@@ -217,7 +223,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(43, 99, 110, 0.5)', // Light teal overlay - image clearly visible
+    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Overlay with 85% opacity
   },
   safeHeader: {
     flex: 1,
