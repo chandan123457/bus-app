@@ -13,6 +13,7 @@ import SignUpScreen from '../screens/SignUpScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BusSearchResultsScreen from '../screens/BusSearchResultsScreen';
 import SeatSelectionScreen from '../screens/SeatSelectionScreen';
+import SeatSelectionDuplicate from '../screens/SeatSelectionDuplicate';
 
 const Stack = createNativeStackNavigator();
 
@@ -80,6 +81,15 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="SeatSelection" 
           component={SeatSelectionScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+
+        {/* Seat Selection Duplicate Screen (with Lower/Upper selector) */}
+        <Stack.Screen 
+          name="SeatSelectionDuplicate" 
+          component={SeatSelectionDuplicate}
           options={{
             animation: 'slide_from_right',
           }}
