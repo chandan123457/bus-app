@@ -48,151 +48,153 @@ const PassengerInformation = ({ navigation, route }) => {
     <View style={styles.container}>
       <StatusBar hidden />
       
-      {/* Full-screen background image */}
-      <ImageBackground
-        source={require('../../assets/landing-background.jpg')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
+      {/* Top Background Image Section */}
+      <View style={styles.topImageSection}>
+        <ImageBackground
+          source={require('../../assets/landing-background.jpg')}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        >
+          <View style={styles.overlay} />
+
+          <SafeAreaView edges={['top']} style={styles.safeHeader}>
+            {/* Header */}
+            <View style={styles.header}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              
+              <View style={styles.headerCenter}>
+                <Text style={styles.operatorName}>{busData.operator}</Text>
+                <Text style={styles.busDetails}>
+                  {busData.type} | {busData.departureTime}
+                </Text>
+                <Text style={styles.seatsSelected}>
+                  Seats: {selectedSeats.join(', ')}
+                </Text>
+              </View>
+              
+              <View style={styles.headerPlaceholder} />
+            </View>
+          </SafeAreaView>
+        </ImageBackground>
+      </View>
+
+      {/* Scrollable Content Area - Positioned to overlap image */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.overlay} />
-
-        <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            
-            <View style={styles.headerCenter}>
-              <Text style={styles.operatorName}>{busData.operator}</Text>
-              <Text style={styles.busDetails}>
-                {busData.type} | {busData.departureTime}
+        {/* Passenger Information Card - Overlapping the image */}
+        <View style={styles.cardOverlapping}>
+          <Text style={styles.cardTitle}>Passenger Information</Text>
+          
+          {selectedSeats.map((seat, index) => (
+            <View key={index} style={styles.passengerSection}>
+              <Text style={styles.passengerLabel}>
+                Passenger {index + 1}
               </Text>
-              <Text style={styles.seatsSelected}>
-                Seats: {selectedSeats.join(', ')}
-              </Text>
-            </View>
-            
-            <View style={styles.headerPlaceholder} />
-          </View>
-
-          {/* Scrollable Content */}
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Passenger Information Card */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Passenger Information</Text>
               
-              {selectedSeats.map((seat, index) => (
-                <View key={index} style={styles.passengerSection}>
-                  <Text style={styles.passengerLabel}>
-                    Passenger {index + 1}
-                  </Text>
-                  
-                  {/* Full Name Input */}
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Full Name"
-                    placeholderTextColor="#9CA3AF"
-                    value={passengers[index].name}
-                    onChangeText={(text) => updatePassenger(index, 'name', text)}
-                  />
-                  
-                  {/* Age and Gender Row */}
-                  <View style={styles.rowInputs}>
-                    <TextInput
-                      style={[styles.input, styles.ageInput]}
-                      placeholder="Age"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="numeric"
-                      value={passengers[index].age}
-                      onChangeText={(text) => updatePassenger(index, 'age', text)}
-                    />
-                    
-                    {/* Gender Selection */}
-                    <View style={styles.genderContainer}>
-                      <TouchableOpacity
-                        style={styles.radioButton}
-                        onPress={() => updatePassenger(index, 'gender', 'Male')}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.radioCircle}>
-                          {passengers[index].gender === 'Male' && (
-                            <View style={styles.radioCircleFilled} />
-                          )}
-                        </View>
-                        <Text style={styles.radioText}>Male</Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity
-                        style={styles.radioButton}
-                        onPress={() => updatePassenger(index, 'gender', 'Female')}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.radioCircle}>
-                          {passengers[index].gender === 'Female' && (
-                            <View style={styles.radioCircleFilled} />
-                          )}
-                        </View>
-                        <Text style={styles.radioText}>Female</Text>
-                      </TouchableOpacity>
+              {/* Full Name Input */}
+              <TextInput
+                style={styles.input}
+                placeholder="Full Name"
+                placeholderTextColor="#9CA3AF"
+                value={passengers[index].name}
+                onChangeText={(text) => updatePassenger(index, 'name', text)}
+              />
+              
+              {/* Age and Gender Row */}
+              <View style={styles.rowInputs}>
+                <TextInput
+                  style={[styles.input, styles.ageInput]}
+                  placeholder="Age"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                  value={passengers[index].age}
+                  onChangeText={(text) => updatePassenger(index, 'age', text)}
+                />
+                
+                {/* Gender Selection */}
+                <View style={styles.genderContainer}>
+                  <TouchableOpacity
+                    style={styles.radioButton}
+                    onPress={() => updatePassenger(index, 'gender', 'Male')}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.radioCircle}>
+                      {passengers[index].gender === 'Male' && (
+                        <View style={styles.radioCircleFilled} />
+                      )}
                     </View>
-                  </View>
+                    <Text style={styles.radioText}>Male</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.radioButton}
+                    onPress={() => updatePassenger(index, 'gender', 'Female')}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.radioCircle}>
+                      {passengers[index].gender === 'Female' && (
+                        <View style={styles.radioCircleFilled} />
+                      )}
+                    </View>
+                    <Text style={styles.radioText}>Female</Text>
+                  </TouchableOpacity>
                 </View>
-              ))}
+              </View>
             </View>
+          ))}
+        </View>
 
-            {/* Contact Details Card */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Contact Details</Text>
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Phone Number"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="phone-pad"
-                value={contactDetails.phone}
-                onChangeText={(text) =>
-                  setContactDetails({ ...contactDetails, phone: text })
-                }
-              />
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={contactDetails.email}
-                onChangeText={(text) =>
-                  setContactDetails({ ...contactDetails, email: text })
-                }
-              />
-            </View>
+        {/* Contact Details Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Contact Details</Text>
+          
+          <TextInput
+            style={styles.input}
+            placeholder="Phone Number"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="phone-pad"
+            value={contactDetails.phone}
+            onChangeText={(text) =>
+              setContactDetails({ ...contactDetails, phone: text })
+            }
+          />
+          
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={contactDetails.email}
+            onChangeText={(text) =>
+              setContactDetails({ ...contactDetails, email: text })
+            }
+          />
+        </View>
 
-            {/* Bottom spacing */}
-            <View style={{ height: 100 }} />
-          </ScrollView>
+        {/* Bottom spacing for button */}
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
-          {/* Proceed Button */}
-          <View style={styles.buttonWrapper}>
-            <TouchableOpacity
-              style={styles.proceedButton}
-              activeOpacity={0.8}
-              onPress={handleProceed}
-            >
-              <Text style={styles.proceedButtonText}>Proceed to Book</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </ImageBackground>
+      {/* Proceed Button */}
+      <View style={styles.buttonWrapper}>
+        <TouchableOpacity
+          style={styles.proceedButton}
+          activeOpacity={0.8}
+          onPress={handleProceed}
+        >
+          <Text style={styles.proceedButtonText}>Proceed to Book</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -200,7 +202,13 @@ const PassengerInformation = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#FFFFFF',
+  },
+  
+  // Top Image Section
+  topImageSection: {
+    height: SCREEN_HEIGHT * 0.25,
+    width: '100%',
   },
   backgroundImage: {
     flex: 1,
@@ -209,7 +217,10 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(43, 99, 110, 0.5)', // Light teal overlay - image clearly visible
+  },
+  safeHeader: {
+    flex: 1,
   },
   
   // Header Styles
@@ -219,7 +230,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 20,
+    paddingBottom: 16,
   },
   backButton: {
     width: 40,
@@ -237,30 +248,47 @@ const styles = StyleSheet.create({
   operatorName: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0.3,
   },
   busDetails: {
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 255, 255, 0.95)',
     fontSize: 13,
-    marginTop: 2,
+    marginTop: 3,
   },
   seatsSelected: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 12,
     marginTop: 2,
   },
 
-  // Scroll View
+  // Scroll View - Positioned absolutely to overlap image
   scrollView: {
-    flex: 1,
+    position: 'absolute',
+    top: SCREEN_HEIGHT * 0.18, // Starts before image ends (at 80% of image height)
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 100,
   },
 
-  // Card Styles
+  // Overlapping Card Style for Passenger Information
+  cardOverlapping: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+
+  // Regular Card Styles
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -268,15 +296,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1F2937',
     marginBottom: 16,
+    textAlign: 'center', // Centered title
   },
 
   // Passenger Section
@@ -290,14 +319,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
-  // Input Styles
+  // Input Styles - Clean, no borders
   input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 15,
     color: '#1F2937',
     marginBottom: 12,
@@ -315,55 +342,51 @@ const styles = StyleSheet.create({
   // Gender Selection
   genderContainer: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 20,
   },
   radioButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   radioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
     borderColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   radioCircleFilled: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: '#3B82F6',
   },
   radioText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#374151',
     fontWeight: '500',
   },
 
-  // Proceed Button
+  // Proceed Button - No card behind it
   buttonWrapper: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'transparent',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 16,
+    paddingBottom: 20,
   },
   proceedButton: {
     backgroundColor: '#3B82F6',
     borderRadius: 25,
-    height: 50,
+    height: 52,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
   proceedButtonText: {
     color: '#FFFFFF',
