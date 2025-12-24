@@ -55,10 +55,15 @@ const SeatSelectionDuplicate = ({ navigation, route }) => {
       : { color: '#FFFFFF' };
   };
 
-  const renderSeat = (seatId, state) => (
+  const getSeatHeightStyle = (row) => {
+    // Rows B, C, D get increased height; Row A stays normal
+    return row === 'A' ? {} : { height: 90 };
+  };
+
+  const renderSeat = (seatId, state, row) => (
     <TouchableOpacity
       key={seatId}
-      style={[styles.seat, getSeatStyle(state)]}
+      style={[styles.seat, getSeatStyle(state), getSeatHeightStyle(row)]}
       onPress={() => handleSeatPress(seatId)}
       disabled={state === 'booked'}
       activeOpacity={0.7}
@@ -74,13 +79,13 @@ const SeatSelectionDuplicate = ({ navigation, route }) => {
     return (
       <View key={row} style={styles.seatRow}>
         <View style={styles.seatGroup}>
-          {renderSeat(`${row}1`, seatStates[`${row}1`])}
-          {renderSeat(`${row}2`, seatStates[`${row}2`])}
+          {renderSeat(`${row}1`, seatStates[`${row}1`], row)}
+          {renderSeat(`${row}2`, seatStates[`${row}2`], row)}
         </View>
         <View style={styles.aisle} />
         <View style={styles.seatGroup}>
-          {renderSeat(`${row}3`, seatStates[`${row}3`])}
-          {renderSeat(`${row}4`, seatStates[`${row}4`])}
+          {renderSeat(`${row}3`, seatStates[`${row}3`], row)}
+          {renderSeat(`${row}4`, seatStates[`${row}4`], row)}
         </View>
       </View>
     );
@@ -202,7 +207,7 @@ const SeatSelectionDuplicate = ({ navigation, route }) => {
             {/* Lower Deck Watermark Text - Behind Seats */}
             <Text style={styles.deckWatermark}>Lower Deck</Text>
             
-            {/* Steering Wheel / Driver Icon - Top Right */}
+            {/* Steering Wheel / Driver Icon - Centered between A3 and A4 */}
             <View style={styles.steeringIconWrapper}>
               <MaterialCommunityIcons 
                 name="steering" 
@@ -415,8 +420,9 @@ const styles = StyleSheet.create({
   },
   steeringIconWrapper: {
     position: 'absolute',
-    top: 16,
-    right: 20,
+    top: 8,
+    left: '50%',
+    marginLeft: 44, // Positions icon centered between A3 and A4 (half layout width + half right group + half gap)
     zIndex: 10,
   },
   steeringIcon: {
@@ -457,7 +463,7 @@ const styles = StyleSheet.create({
   },
   seat: {
     width: 41,
-    height: 57, // Small, compact, slightly taller than wide - reference exact
+    height: 50, // Updated base height for row A
     borderRadius: 9, // Rounded rectangle - reference match
     justifyContent: 'center',
     alignItems: 'center',
