@@ -58,16 +58,16 @@ const BookingsScreen = ({ navigation }) => {
 
       {/* Middle Section - Journey Details */}
       <View style={styles.journeySection}>
-        {/* From */}
-        <View style={styles.locationContainer}>
+        {/* From (Origin) */}
+        <View style={[styles.locationContainer, { alignItems: 'flex-start', minWidth: 70, paddingLeft: 0 }]}> 
           <Text style={styles.cityName}>{booking.from}</Text>
           <Text style={styles.dateTime}>
             {booking.departureDate}, {booking.departureTime}
           </Text>
         </View>
 
-        {/* Route Line with Bus Icon */}
-        <View style={styles.routeContainer}>
+        {/* Center Connector with Bus Icon */}
+        <View style={styles.connectorContainer}>
           <View style={styles.dottedLine} />
           <MaterialCommunityIcons
             name="bus"
@@ -78,10 +78,10 @@ const BookingsScreen = ({ navigation }) => {
           <View style={styles.dottedLine} />
         </View>
 
-        {/* To */}
-        <View style={styles.locationContainer}>
-          <Text style={styles.cityName}>{booking.to}</Text>
-          <Text style={styles.dateTime}>
+        {/* To (Destination) */}
+        <View style={[styles.locationContainer, { alignItems: 'flex-end', minWidth: 70, paddingRight: 0, marginRight: -16 }]}> 
+          <Text style={[styles.cityName, { textAlign: 'right' }]}>{booking.to}</Text>
+          <Text style={[styles.dateTime, { textAlign: 'right' }]}> 
             {booking.arrivalDate}, {booking.arrivalTime}
           </Text>
         </View>
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   operatorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8, // Reduced from 16 for compact spacing
   },
   operatorLogo: {
     width: 40,
@@ -300,31 +300,27 @@ const styles = StyleSheet.create({
   // Journey Section
   journeySection: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingVertical: 8,
+    alignItems: 'stretch',
+    width: '100%',
+    marginBottom: 8,
+    paddingVertical: 4,
   },
   locationContainer: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  connectorContainer: {
     flex: 1,
-  },
-  cityName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#3B82F6', // Blue color for city names
-    marginBottom: 4,
-  },
-  dateTime: {
-    fontSize: 12,
-    color: '#9CA3AF', // Gray color
-  },
-  routeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 40,
+    maxWidth: '60%',
     paddingHorizontal: 8,
   },
   dottedLine: {
-    width: 30,
+    flex: 1,
     height: 1,
     borderWidth: 1,
     borderColor: '#D1D5DB',
@@ -338,7 +334,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: 16,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#D1D5DB',
     borderStyle: 'dashed', // Dashed divider
