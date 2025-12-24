@@ -36,8 +36,41 @@ const BookingsScreen = ({ navigation }) => {
         fare: '1160',
       },
     ],
-    Completed: [],
-    Cancelled: [],
+    Completed: [
+      {
+        id: 2,
+        operator: 'VLR Travels',
+        type: 'A/C Sleeper (2+1)',
+        from: 'Jaipur',
+        to: 'Jodhpur',
+        departureDate: 'Sept 27',
+        departureTime: '6:15 AM',
+        arrivalDate: 'Sept 27',
+        arrivalTime: '2:15 PM',
+        duration: '8 h 20 m',
+        date: 'September 27',
+        persons: '2 persons',
+        fare: '1160',
+      },
+    ],
+    Cancelled: [
+      {
+        id: 3,
+        operator: 'VLR Travels',
+        type: 'A/C Sleeper (2+1)',
+        from: 'Jaipur',
+        to: 'Jodhpur',
+        departureDate: 'Sept 27',
+        departureTime: '6:15 AM',
+        arrivalDate: 'Sept 27',
+        arrivalTime: '2:15 PM',
+        duration: '8 h 20 m',
+        date: 'September 27',
+        persons: '2 persons',
+        fare: '1160',
+        status: 'cancelled',
+      },
+    ],
   };
 
   const tabs = ['Active', 'Completed', 'Cancelled'];
@@ -61,47 +94,70 @@ const BookingsScreen = ({ navigation }) => {
         {/* From (Origin) */}
         <View style={[styles.locationContainer, { alignItems: 'flex-start', minWidth: 70, paddingLeft: 0 }]}> 
           <Text style={styles.cityName}>{booking.from}</Text>
-          <Text style={styles.dateTime}>
-            {booking.departureDate}, {booking.departureTime}
-          </Text>
         </View>
 
         {/* Center Connector with Bus Icon */}
-        <View style={styles.connectorContainer}>
-          <View style={styles.dottedLine} />
-          <MaterialCommunityIcons
-            name="bus"
-            size={16}
-            color="#3B82F6"
-            style={styles.busIcon}
-          />
-          <View style={styles.dottedLine} />
+        <View style={styles.connectorWrapper}>
+          <View style={styles.connectorContainer}>
+            <View style={styles.dottedLine} />
+            <MaterialCommunityIcons
+              name="bus"
+              size={16}
+              color="#3B82F6"
+              style={styles.busIcon}
+            />
+            <View style={styles.dottedLine} />
+          </View>
+          {booking.duration && (
+            <Text style={styles.durationText}>{booking.duration}</Text>
+          )}
         </View>
 
         {/* To (Destination) */}
-        <View style={[styles.locationContainer, { alignItems: 'flex-end', minWidth: 70, paddingRight: 0, marginRight: -16 }]}> 
+        <View style={[styles.locationContainer, { alignItems: 'flex-end', minWidth: 70, paddingRight: 0 }]}> 
           <Text style={[styles.cityName, { textAlign: 'right' }]}>{booking.to}</Text>
-          <Text style={[styles.dateTime, { textAlign: 'right' }]}> 
-            {booking.arrivalDate}, {booking.arrivalTime}
-          </Text>
         </View>
       </View>
 
       {/* Bottom Row - Booking Meta Info */}
-      <View style={styles.metaRow}>
-        <View style={styles.metaColumn}>
-          <Text style={styles.metaLabel}>Passenger Name</Text>
-          <Text style={styles.metaValue}>{booking.passengers}</Text>
+      {booking.date ? (
+        <View style={styles.completedMetaRow}>
+          <View style={styles.completedMetaItem}>
+            <MaterialCommunityIcons name="calendar" size={14} color="#6B7280" />
+            <Text style={styles.completedMetaText}>{booking.date}</Text>
+          </View>
+          <View style={styles.completedMetaItem}>
+            <MaterialCommunityIcons name="account" size={14} color="#6B7280" />
+            <Text style={styles.completedMetaText}>{booking.persons}</Text>
+          </View>
+          <View style={styles.completedMetaItem}>
+            <MaterialCommunityIcons 
+              name="credit-card" 
+              size={14} 
+              color={booking.status === 'cancelled' ? '#EF4444' : '#6B7280'} 
+            />
+            <Text style={[
+              styles.completedMetaText,
+              booking.status === 'cancelled' && { color: '#EF4444' }
+            ]}>₹ {booking.fare}</Text>
+          </View>
         </View>
-        <View style={styles.metaColumn}>
-          <Text style={styles.metaLabel}>Seat No.</Text>
-          <Text style={styles.metaValue}>{booking.seats}</Text>
+      ) : (
+        <View style={styles.metaRow}>
+          <View style={styles.metaColumn}>
+            <Text style={styles.metaLabel}>Passenger Name</Text>
+            <Text style={styles.metaValue}>{booking.passengers}</Text>
+          </View>
+          <View style={styles.metaColumn}>
+            <Text style={styles.metaLabel}>Seat No.</Text>
+            <Text style={styles.metaValue}>{booking.seats}</Text>
+          </View>
+          <View style={styles.metaColumn}>
+            <Text style={styles.metaLabel}>Ticket Fare</Text>
+            <Text style={styles.metaValue}>₹ {booking.fare}</Text>
+          </View>
         </View>
-        <View style={styles.metaColumn}>
-          <Text style={styles.metaLabel}>Ticket Fare</Text>
-          <Text style={styles.metaValue}>₹ {booking.fare}</Text>
-        </View>
-      </View>
+      )}
     </View>
   );
 
@@ -193,7 +249,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(43, 99, 110, 0.25)', // Soft teal overlay
+    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Soft teal overlay
   },
   safeHeader: {
     flex: 1,
@@ -310,14 +366,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  connectorContainer: {
+  connectorWrapper: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 40,
     maxWidth: '60%',
     paddingHorizontal: 8,
+  },
+  connectorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
   },
   dottedLine: {
     flex: 1,
@@ -328,6 +390,21 @@ const styles = StyleSheet.create({
   },
   busIcon: {
     marginHorizontal: 4,
+  },
+  durationText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  cityName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#3B82F6', // Blue color for city names
+    marginBottom: 4,
+  },
+  dateTime: {
+    fontSize: 12,
+    color: '#9CA3AF', // Gray color
   },
 
   // Meta Row
@@ -352,6 +429,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1F2937', // Dark text for values
+  },
+  completedMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#D1D5DB',
+    borderStyle: 'dashed',
+  },
+  completedMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  completedMetaText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
   },
 
   // Empty State

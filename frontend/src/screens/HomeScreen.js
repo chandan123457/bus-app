@@ -157,6 +157,8 @@ const HomeScreen = ({ navigation }) => {
     // Navigate to respective screens
     if (tab === 'Bookings') {
       navigation.navigate('Bookings');
+    } else if (tab === 'Offers') {
+      navigation.navigate('Offers');
     }
     // Add navigation for other tabs as needed
   };
