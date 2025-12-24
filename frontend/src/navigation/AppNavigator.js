@@ -16,6 +16,7 @@ import SeatSelectionScreen from '../screens/SeatSelectionScreen';
 import SeatSelectionDuplicate from '../screens/SeatSelectionDuplicate';
 import PassengerInformation from '../screens/PassengerInformation';
 import PaymentScreen from '../screens/PaymentScreen';
+import BookingsScreen from '../screens/BookingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -110,6 +111,15 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="Payment" 
           component={PaymentScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+
+        {/* Bookings Screen */}
+        <Stack.Screen 
+          name="Bookings" 
+          component={BookingsScreen}
           options={{
             animation: 'slide_from_right',
           }}

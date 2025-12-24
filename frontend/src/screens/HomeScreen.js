@@ -154,6 +154,11 @@ const HomeScreen = ({ navigation }) => {
   const handleBottomNav = (tab) => {
     console.log('Navigate to:', tab);
     setActiveTab(tab);
+    // Navigate to respective screens
+    if (tab === 'Bookings') {
+      navigation.navigate('Bookings');
+    }
+    // Add navigation for other tabs as needed
   };
 
   return (
