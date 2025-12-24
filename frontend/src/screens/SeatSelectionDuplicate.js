@@ -41,11 +41,11 @@ const SeatSelectionDuplicate = ({ navigation, route }) => {
   const getSeatStyle = (state) => {
     switch(state) {
       case 'selected':
-        return { backgroundColor: '#2D9B9B', borderColor: '#2D9B9B' };
+        return { backgroundColor: '#0EA5A5' }; // Teal/cyan - reference exact
       case 'booked':
-        return { backgroundColor: '#2C2C2C', borderColor: '#2C2C2C' };
+        return { backgroundColor: '#1A3838' }; // Dark navy - reference exact
       default:
-        return { backgroundColor: '#E8E8E8', borderColor: '#E8E8E8' };
+        return { backgroundColor: '#CEE5E5' }; // Light pale cyan/gray - reference exact
     }
   };
 
@@ -197,11 +197,22 @@ const SeatSelectionDuplicate = ({ navigation, route }) => {
 
         {/* Seat Layout - Direct on white background */}
         <View style={styles.seatLayoutContainer}>
-          {/* Steering Wheel / Driver Icon */}
-          <MaterialCommunityIcons name="steering" size={28} color="#2C2C2C" style={styles.steeringIcon} />
-
-          {/* Seats Grid */}
+          {/* Seats Grid with Lower Deck Watermark */}
           <View style={styles.seatsGrid}>
+            {/* Lower Deck Watermark Text - Behind Seats */}
+            <Text style={styles.deckWatermark}>Lower Deck</Text>
+            
+            {/* Steering Wheel / Driver Icon - Top Right */}
+            <View style={styles.steeringIconWrapper}>
+              <MaterialCommunityIcons 
+                name="steering" 
+                size={28} 
+                color="#374151" 
+                style={styles.steeringIcon} 
+              />
+            </View>
+            
+            {/* Seats */}
             {['A', 'B', 'C', 'D'].map(row => renderSeatRow(row))}
           </View>
         </View>
@@ -233,7 +244,7 @@ const SeatSelectionDuplicate = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA', // Very light off-white background
   },
   topSection: {
     height: SCREEN_HEIGHT * 0.25, // 25% of screen height for background image
@@ -395,44 +406,67 @@ const styles = StyleSheet.create({
 
   // Seat Layout Styles
   seatLayoutContainer: {
-    marginHorizontal: 16,
+    marginHorizontal: 24,
     marginBottom: 0,
-    padding: 20,
-    backgroundColor: 'transparent',
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    backgroundColor: '#FAFAFA',
     position: 'relative',
   },
+  steeringIconWrapper: {
+    position: 'absolute',
+    top: 16,
+    right: 20,
+    zIndex: 10,
+  },
   steeringIcon: {
-    alignSelf: 'flex-end',
-    marginBottom: 12,
-    marginRight: 12,
-    backgroundColor: 'transparent',
+    // Flat icon only, no background, no circle
   },
   seatsGrid: {
     alignItems: 'center',
+    position: 'relative',
+    paddingTop: 48,
+  },
+  deckWatermark: {
+    position: 'absolute',
+    fontSize: 12,
+    color: '#C8D6D6',
+    opacity: 0.28,
+    fontWeight: '300',
+    letterSpacing: 2.5,
+    transform: [{ rotate: '90deg' }],
+    // Centered exactly in the aisle between seat blocks
+    left: '50%',
+    top: '50%',
+    marginLeft: -35,
+    marginTop: -50,
+    zIndex: 0,
   },
   seatRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 7, // Tight vertical spacing - reference match
   },
   seatGroup: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 7, // Tight horizontal spacing between seats in same group
   },
   aisle: {
-    width: 24,
+    width: 26, // Aisle width - reference match
   },
   seat: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
+    width: 41,
+    height: 57, // Small, compact, slightly taller than wide - reference exact
+    borderRadius: 9, // Rounded rectangle - reference match
     justifyContent: 'center',
     alignItems: 'center',
+    // No borders, no shadows, clean design
   },
   seatText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
+    color: '#3F4B4B',
   },
 
   // Bottom Button Styles
@@ -441,27 +475,24 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA', // Match screen background
     paddingHorizontal: 16,
     paddingVertical: 16,
+    // No card or container behind button
   },
   continueButton: {
-    backgroundColor: '#5B7EFF',
-    borderRadius: 25,
+    backgroundColor: '#3B82F6', // Blue background
+    borderRadius: 25, // Pill-shaped
     height: 50,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#5B7EFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    // No shadows for flat design
   },
   continueButtonText: {
-    color: '#FFFFFF',
+    color: '#FFFFFF', // White text
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '700', // Bold
     letterSpacing: 0.5,
   },
 });
