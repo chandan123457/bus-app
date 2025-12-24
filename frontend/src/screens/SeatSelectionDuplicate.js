@@ -232,9 +232,13 @@ const SeatSelectionDuplicate = ({ navigation, route }) => {
           style={styles.continueButton}
           activeOpacity={0.8}
           onPress={() => {
-            // Navigate to payment or next screen
+            // Navigate to passenger information screen
             console.log('Selected seats:', selectedSeats);
             console.log('Selected deck:', selectedDeck);
+            navigation.navigate('PassengerInformation', {
+              busData: busData,
+              selectedSeats: selectedSeats,
+            });
           }}
         >
           <Text style={styles.continueButtonText}>
