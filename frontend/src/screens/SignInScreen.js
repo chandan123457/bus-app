@@ -81,7 +81,7 @@ const SignInScreen = ({ navigation }) => {
               keyboardShouldPersistTaps="handled"
               bounces={false}
             >
-              {/* Logo Circle - overlapping card top */}
+              {/* Floating Logo - positioned above form card */}
               <View style={styles.logoContainer}>
                 <View style={styles.logoCircle}>
                   <Image
@@ -92,8 +92,8 @@ const SignInScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              {/* Main White Card - floating above background */}
-              <View style={styles.card}>
+              {/* Sign In Card - logo bottom half overlaps it with visible gap */}
+              <View style={styles.signInCard}>
                 {/* Title */}
                 <Text style={styles.heading}>Sign in your account</Text>
 
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Soft teal overlay - background image clearly visible
+    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Soft teal overlay
   },
 
   safeArea: {
@@ -211,16 +211,15 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     paddingVertical: 20,
     paddingHorizontal: 20,
   },
 
-  // Logo positioned to overlap card top
+  // Floating Logo - positioned above form card
   logoContainer: {
     alignItems: 'center',
-    marginBottom: -(LOGO_CIRCLE_SIZE / 2),
+    marginTop: 20,
+    marginBottom: -(LOGO_CIRCLE_SIZE / 2) + 15, // Bottom half overlaps form card, with small visible gap
     zIndex: 10,
   },
 
@@ -232,10 +231,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
   },
 
   logo: {
@@ -243,26 +242,29 @@ const styles = StyleSheet.create({
     height: LOGO_CIRCLE_SIZE * 0.6,
   },
 
-  // Main white card - floating above background
-  card: {
+  // Sign In Card (Second White Card) - SECOND CARD, logo bottom half overlaps it
+  signInCard: {
     width: width * 0.9,
+    alignSelf: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: CARD_BORDER_RADIUS,
-    paddingTop: (LOGO_CIRCLE_SIZE / 2) + 24,
+    paddingTop: (LOGO_CIRCLE_SIZE / 2) + 20, // Space for logo bottom half overlap + visible gap
     paddingHorizontal: 24,
     paddingBottom: 24,
+    marginTop: 0, // Logo container marginBottom handles the overlap
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
+    zIndex: 2,
   },
 
   // Title
   heading: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1F2937', // Dark text
+    color: '#1F2937',
     textAlign: 'left',
     marginBottom: 24,
   },
@@ -279,13 +281,13 @@ const styles = StyleSheet.create({
   // Input field - light gray background, rounded corners, borderless
   input: {
     height: INPUT_HEIGHT,
-    backgroundColor: '#F3F4F6', // Light gray background
+    backgroundColor: '#F3F4F6',
     borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 15,
     color: '#1F2937',
     marginBottom: 16,
-    borderWidth: 0, // Borderless
+    borderWidth: 0,
   },
 
   // Sign In Button - full width, blue background, white bold text
@@ -336,7 +338,7 @@ const styles = StyleSheet.create({
     width: SOCIAL_BUTTON_SIZE,
     height: SOCIAL_BUTTON_SIZE,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6', // Light background
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
