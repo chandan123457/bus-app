@@ -19,6 +19,7 @@ import PaymentScreen from '../screens/PaymentScreen';
 import BookingsScreen from '../screens/BookingsScreen';
 import OffersScreen from '../screens/OffersScreen';
 import HelpSupportScreen from '../screens/HelpSupportScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -140,6 +141,15 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="HelpSupport" 
           component={HelpSupportScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+
+        {/* Profile Screen */}
+        <Stack.Screen 
+          name="Profile" 
+          component={ProfileScreen}
           options={{
             animation: 'slide_from_right',
           }}

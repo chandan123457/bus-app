@@ -161,6 +161,8 @@ const HomeScreen = ({ navigation }) => {
       navigation.navigate('Offers');
     } else if (tab === 'Support') {
       navigation.navigate('HelpSupport');
+    } else if (tab === 'Profile') {
+      navigation.navigate('Profile');
     }
     // Add navigation for other tabs as needed
   };

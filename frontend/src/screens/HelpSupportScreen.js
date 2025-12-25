@@ -201,11 +201,15 @@ const HelpSupportScreen = ({ navigation }) => {
               />
               <Text style={styles.contactText}>support@gantabya.com</Text>
             </View>
-          </View>
-
-          {/* Footer Note */}
-          <View style={styles.footerNote}>
-            <Text style={styles.footerText}>24/7 Support Available</Text>
+            <View style={styles.supportAvailableRow}>
+              <MaterialCommunityIcons
+                name="clock-outline"
+                size={20}
+                color="#3B82F6"
+                style={styles.supportAvailableIcon}
+              />
+              <Text style={styles.supportAvailableText}>24/7 Support Available</Text>
+            </View>
           </View>
         </ScrollView>
       </View>
@@ -279,7 +283,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(43, 99, 110, 0.4)', // Soft teal overlay (not dark)
+    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Soft teal overlay with 0.85 opacity
   },
   safeHeader: {
     flex: 1,
@@ -302,12 +306,14 @@ const styles = StyleSheet.create({
   contentArea: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+    marginTop: 5, // Start slightly upward, overlapping the background image
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 16,
+    paddingTop: 0, // No extra top padding needed
     paddingBottom: 100, // Space for bottom navigation
   },
 
@@ -411,7 +417,7 @@ const styles = StyleSheet.create({
   },
   contactCardTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700', // Bold
     color: '#1F2937',
     marginBottom: 16,
   },
@@ -428,16 +434,19 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     fontWeight: '400',
   },
-
-  // Footer Note
-  footerNote: {
+  supportAvailableRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    marginTop: 12,
   },
-  footerText: {
-    fontSize: 13,
-    color: '#9CA3AF',
+  supportAvailableIcon: {
+    marginRight: 12,
+  },
+  supportAvailableText: {
+    fontSize: 13, // Slightly larger for better readability
+    color: '#6B7280', // Subtle gray color
     fontWeight: '400',
+    fontStyle: 'italic', // Subtle italic styling
   },
 
   // Bottom Navigation
