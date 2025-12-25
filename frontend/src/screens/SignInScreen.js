@@ -1,16 +1,3 @@
-/**
- * Sign In Screen - Premium iOS-Style Design
- * 
- * Features:
- * - Strong blur background with soft light overlay
- * - Compact single card (~94% width, ~78-80% height)
- * - Shallow curved bottom (subtle, not dramatic)
- * - Logo circle with soft shadow
- * - Refined compact spacing throughout
- * - Medium-height inputs and button
- * - Clean balanced layout
- */
-
 import React, { useState } from 'react';
 import {
   View,
@@ -27,14 +14,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { FontAwesome } from '@expo/vector-icons';
-import Svg, { Path, Circle, G } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
-// Custom SVG Icons for guaranteed rendering
+// Custom SVG Icons
 const GoogleIcon = () => (
-  <Svg width="26" height="26" viewBox="0 0 24 24">
+  <Svg width="24" height="24" viewBox="0 0 24 24">
     <Path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
     <Path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
     <Path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -43,13 +29,13 @@ const GoogleIcon = () => (
 );
 
 const FacebookIcon = () => (
-  <Svg width="26" height="26" viewBox="0 0 24 24">
+  <Svg width="24" height="24" viewBox="0 0 24 24">
     <Path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2"/>
   </Svg>
 );
 
 const TwitterIcon = () => (
-  <Svg width="26" height="26" viewBox="0 0 24 24">
+  <Svg width="24" height="24" viewBox="0 0 24 24">
     <Path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" fill="#1DA1F2"/>
   </Svg>
 );
@@ -60,7 +46,6 @@ const SignInScreen = ({ navigation }) => {
 
   const handleSignIn = () => {
     console.log('Sign in:', { email, password });
-    // Navigate to Home screen after successful sign in
     navigation.navigate('Home');
   };
 
@@ -74,18 +59,17 @@ const SignInScreen = ({ navigation }) => {
 
   return (
     <>
-      {/* Status bar visible (dark content for light background) */}
-      <StatusBar style="dark" translucent backgroundColor="transparent" />
+      <StatusBar style="light" translucent backgroundColor="transparent" />
       
-      {/* Full-screen background - strong blur with soft light overlay */}
+      {/* Full-screen background with soft teal overlay */}
       <ImageBackground
         source={require('../../assets/landing-background.jpg')}
         style={styles.background}
         resizeMode="cover"
-        blurRadius={20}
       >
-        {/* Soft light overlay */}
+        {/* Soft teal overlay */}
         <View style={styles.overlay} />
+        
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -108,7 +92,7 @@ const SignInScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              {/* Main White Card */}
+              {/* Main White Card - floating above background */}
               <View style={styles.card}>
                 {/* Title */}
                 <Text style={styles.heading}>Sign in your account</Text>
@@ -118,7 +102,7 @@ const SignInScreen = ({ navigation }) => {
                 <TextInput
                   style={styles.input}
                   placeholder="ex: lakshaybkl@gmail.com"
-                  placeholderTextColor="#A8A8A8"
+                  placeholderTextColor="#9CA3AF"
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -131,7 +115,7 @@ const SignInScreen = ({ navigation }) => {
                 <TextInput
                   style={styles.input}
                   placeholder="••••••••"
-                  placeholderTextColor="#A8A8A8"
+                  placeholderTextColor="#9CA3AF"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
@@ -147,12 +131,12 @@ const SignInScreen = ({ navigation }) => {
                   <Text style={styles.signInButtonText}>SIGN IN</Text>
                 </TouchableOpacity>
 
-                {/* Divider - text only, no lines */}
+                {/* Social Sign-In Section */}
                 <View style={styles.dividerContainer}>
                   <Text style={styles.dividerText}>or sign in with</Text>
                 </View>
 
-                {/* Social Login Icons */}
+                {/* Social Login Buttons - Square */}
                 <View style={styles.socialContainer}>
                   {/* Google */}
                   <TouchableOpacity
@@ -182,7 +166,7 @@ const SignInScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 </View>
 
-                {/* Footer */}
+                {/* Sign Up Link */}
                 <View style={styles.signUpContainer}>
                   <Text style={styles.signUpText}>Don't have an account? </Text>
                   <TouchableOpacity onPress={handleSignUp} activeOpacity={0.7}>
@@ -198,15 +182,12 @@ const SignInScreen = ({ navigation }) => {
   );
 };
 
-// Design constants - Premium iOS-style proportions
 const LOGO_CIRCLE_SIZE = 90;
-const CARD_TOP_RADIUS = 32;
-const CARD_BOTTOM_RADIUS = 45; // Shallow curve
-const CARD_HEIGHT_RATIO = 0.78; // Compact, not tall
+const CARD_BORDER_RADIUS = 24;
 const INPUT_HEIGHT = 48;
 const BUTTON_HEIGHT = 50;
 const SOCIAL_BUTTON_SIZE = 56;
-const PRIMARY_BLUE = '#4B7BF5';
+const PRIMARY_BLUE = '#3B82F6';
 
 const styles = StyleSheet.create({
   flex: {
@@ -221,7 +202,7 @@ const styles = StyleSheet.create({
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Soft teal overlay - background image clearly visible
   },
 
   safeArea: {
@@ -233,6 +214,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 20,
+    paddingHorizontal: 20,
   },
 
   // Logo positioned to overlap card top
@@ -250,10 +232,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
   },
 
   logo: {
@@ -261,123 +243,119 @@ const styles = StyleSheet.create({
     height: LOGO_CIRCLE_SIZE * 0.6,
   },
 
-  // Main white card with shallow curved bottom
+  // Main white card - floating above background
   card: {
-    width: width * 0.94,
-    height: height * CARD_HEIGHT_RATIO,
+    width: width * 0.9,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: CARD_TOP_RADIUS,
-    borderTopRightRadius: CARD_TOP_RADIUS,
-    borderBottomLeftRadius: CARD_BOTTOM_RADIUS,
-    borderBottomRightRadius: CARD_BOTTOM_RADIUS,
-    paddingTop: (LOGO_CIRCLE_SIZE / 2) + 20,
-    paddingHorizontal: 22,
-    paddingBottom: 20,
+    borderRadius: CARD_BORDER_RADIUS,
+    paddingTop: (LOGO_CIRCLE_SIZE / 2) + 24,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 10,
   },
 
-  // Title - compact and refined
+  // Title
   heading: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#000000',
+    color: '#1F2937', // Dark text
     textAlign: 'left',
-    marginBottom: 20,
+    marginBottom: 24,
   },
 
   // Input label
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#000000',
-    marginBottom: 7,
+    color: '#1F2937',
+    marginBottom: 8,
     textAlign: 'left',
   },
 
-  // Input field - medium height, compact
+  // Input field - light gray background, rounded corners, borderless
   input: {
     height: INPUT_HEIGHT,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#F3F4F6', // Light gray background
     borderRadius: 12,
     paddingHorizontal: 16,
-    fontSize: 14,
-    color: '#000000',
-    marginBottom: 14,
+    fontSize: 15,
+    color: '#1F2937',
+    marginBottom: 16,
+    borderWidth: 0, // Borderless
   },
 
-  // Sign In Button - medium height, balanced
+  // Sign In Button - full width, blue background, white bold text
   signInButton: {
     height: BUTTON_HEIGHT,
     backgroundColor: PRIMARY_BLUE,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 8,
     shadowColor: PRIMARY_BLUE,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
 
   signInButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
 
-  // Divider - light and subtle
+  // Divider
   dividerContainer: {
     alignItems: 'center',
-    marginVertical: 16,
+    marginVertical: 20,
   },
 
   dividerText: {
-    color: '#9E9E9E',
-    fontSize: 13,
+    color: '#6B7280',
+    fontSize: 14,
     fontWeight: '400',
   },
 
-  // Social buttons container - compact
+  // Social buttons container - horizontal with equal spacing
   socialContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 30,
+    marginBottom: 20,
+    paddingHorizontal: 20,
   },
 
-  // Social button
+  // Social button - square, light background, rounded corners
   socialButton: {
     width: SOCIAL_BUTTON_SIZE,
     height: SOCIAL_BUTTON_SIZE,
     borderRadius: 12,
-    backgroundColor: '#F1F4F6',
+    backgroundColor: '#F3F4F6', // Light background
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  // Footer - close to bottom
+  // Footer - Sign Up Link
   signUpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
   },
 
   signUpText: {
-    color: '#000000',
-    fontSize: 13,
+    color: '#1F2937',
+    fontSize: 14,
   },
 
   signUpLink: {
     color: PRIMARY_BLUE,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
 });
