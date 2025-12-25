@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -43,6 +44,53 @@ const TwitterIcon = () => (
 const SignInScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const lastBackPressTime = useRef(0);
+  const backPressTimer = useRef(null);
+  const EXIT_DELAY = 1000; // 1 second window for double press
+
+  // Handle double back press to exit immediately
+  useEffect(() => {
+    const backAction = () => {
+      const currentTime = Date.now();
+      
+      if (lastBackPressTime.current !== 0 && 
+          currentTime - lastBackPressTime.current < EXIT_DELAY) {
+        // Second back press within 1 second - exit immediately
+        if (backPressTimer.current) {
+          clearTimeout(backPressTimer.current);
+        }
+        lastBackPressTime.current = 0;
+        BackHandler.exitApp();
+        return true;
+      } else {
+        // First back press - go back immediately and track time
+        lastBackPressTime.current = currentTime;
+        navigation.goBack();
+        
+        // Reset timer after delay
+        if (backPressTimer.current) {
+          clearTimeout(backPressTimer.current);
+        }
+        backPressTimer.current = setTimeout(() => {
+          lastBackPressTime.current = 0;
+        }, EXIT_DELAY);
+        
+        return true; // Prevent default behavior
+      }
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => {
+      backHandler.remove();
+      if (backPressTimer.current) {
+        clearTimeout(backPressTimer.current);
+      }
+    };
+  }, [navigation]);
 
   const handleSignIn = () => {
     console.log('Sign in:', { email, password });
