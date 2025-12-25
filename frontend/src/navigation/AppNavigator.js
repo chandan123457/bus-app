@@ -18,6 +18,7 @@ import PassengerInformation from '../screens/PassengerInformation';
 import PaymentScreen from '../screens/PaymentScreen';
 import BookingsScreen from '../screens/BookingsScreen';
 import OffersScreen from '../screens/OffersScreen';
+import HelpSupportScreen from '../screens/HelpSupportScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -130,6 +131,15 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="Offers" 
           component={OffersScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+
+        {/* Help & Support Screen */}
+        <Stack.Screen 
+          name="HelpSupport" 
+          component={HelpSupportScreen}
           options={{
             animation: 'slide_from_right',
           }}
