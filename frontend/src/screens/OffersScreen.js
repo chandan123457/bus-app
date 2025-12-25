@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Soft teal overlay
+    backgroundColor: 'rgba(43, 99, 110, 0.25)', // Soft teal overlay
   },
   safeHeader: {
     flex: 1,
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingTop: 0,
-    marginTop: -SCREEN_HEIGHT * 0.06,
+    marginTop: -SCREEN_HEIGHT * 0.04,
   },
 
   // Offer Card
@@ -177,9 +177,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
 
   // Top Row
