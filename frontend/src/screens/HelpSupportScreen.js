@@ -64,6 +64,7 @@ const HelpSupportScreen = ({ navigation }) => {
   ];
 
   const handleBottomNav = (tab) => {
+    console.log('Navigate to:', tab);
     if (tab === 'Home') {
       navigation.navigate('Home');
     } else if (tab === 'Bookings') {
@@ -73,7 +74,8 @@ const HelpSupportScreen = ({ navigation }) => {
     } else if (tab === 'Support') {
       // Already on Support screen
     } else if (tab === 'Profile') {
-      // Add Profile navigation when available
+      console.log('Navigating to Profile screen');
+      navigation.navigate('Profile');
     }
   };
 
