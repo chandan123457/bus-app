@@ -466,13 +466,23 @@ userRouter.post("/signup", async (req, res) => {
   const isInSchema = signupSchema.safeParse(req.body);
   if (!isInSchema.success) {
     return res.status(402).json({
-      mesage: "not in the proper signup schema format",
+      message: "not in the proper signup schema format",
       errorMessage: isInSchema.error?.issues[0]?.message,
     });
   }
-  // where is the email and number verification man ?
-  const otp = await sendGmail(email);
+  
+  // Send OTP email
+  let otp;
+  try {
+    otp = await sendGmail(email);
+  } catch (e) {
+    console.error("Error sending OTP email:", e);
+    return res.status(500).json({
+      errorMessage: "Failed to send verification email. Please try again.",
+    });
+  }
 
+  // Store OTP in database
   try {
     await prisma.emailVerification.create({
       data: {
@@ -482,8 +492,10 @@ userRouter.post("/signup", async (req, res) => {
       },
     });
   } catch (e) {
-    console.log("error while th email otp db updation ");
-    return;
+    console.error("Error storing email OTP:", e);
+    return res.status(500).json({
+      errorMessage: "Failed to process signup. Please try again.",
+    });
   }
 
   // now we will create this user
@@ -498,17 +510,25 @@ userRouter.post("/signup", async (req, res) => {
       },
     });
   } catch (e: any) {
-    console.dir(e, { depth: null });
+    console.error("Error creating user:", e);
 
+    // Handle duplicate email error
+    if (e.code === "P2002" && e.meta?.target?.includes("email")) {
+      return res
+        .status(400)
+        .json({ errorMessage: "Email already registered" });
+    }
+    
     if (e.code === "P2002" && e.meta?.target?.includes("phone")) {
       return res
         .status(400)
-        .json({ errorMessage: "phone number already registered" });
+        .json({ errorMessage: "Phone number already registered" });
     }
-    return res.status(500).json({ errorMessage: "error while signup " });
+    
+    return res.status(500).json({ errorMessage: "Error while signup. Please try again." });
   }
 
-  return res.status(200).json({ message: "signup sucessfull" });
+  return res.status(200).json({ message: "Signup successful. Please verify your email." });
 });
 
 userRouter.post("/verifyEmail", async (req, res) => {

@@ -22,10 +22,14 @@ import {
   Image,
   StyleSheet,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import Modal from 'react-native-modal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path } from 'react-native-svg';
+import { userAPI } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -57,11 +61,111 @@ const SignUpScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showEmailErrorModal, setShowEmailErrorModal] = useState(false);
+  const [retryPayload, setRetryPayload] = useState(null);
 
-  const handleSignUp = () => {
-    console.log('Sign up:', { name, email, password, confirmPassword, agreedToTerms });
-    // Navigate to Sign In screen after successful signup
-    navigation.navigate('SignIn');
+  const validateForm = () => {
+    // Reset error
+    setError('');
+
+    // Check if all fields are filled
+    if (!name.trim()) {
+      setError('Name is required');
+      return false;
+    }
+
+    if (!email.trim()) {
+      setError('Email is required');
+      return false;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+
+    if (!password) {
+      setError('Password is required');
+      return false;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return false;
+    }
+
+    if (!agreedToTerms) {
+      setError('Please agree to the terms & policy');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSignUp = async (payload) => {
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+
+    // Set loading state
+    setLoading(true);
+    setError('');
+
+    // Prepare payload for retry
+    const signupPayload = payload || {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      password: password,
+    };
+    setRetryPayload(signupPayload);
+
+    try {
+      // Call API
+      const result = await userAPI.signup(signupPayload);
+
+      if (result.success) {
+        // Show success message
+        Alert.alert(
+          'Success',
+          result.message || 'Account created successfully! Please verify your email.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                navigation.navigate('SignIn');
+              },
+            },
+          ]
+        );
+      } else if (
+        result.status === 401 &&
+        result.error &&
+        result.error.toLowerCase().includes('verification email')
+      ) {
+        // Show custom modal for email verification failure
+        setShowEmailErrorModal(true);
+      } else {
+        setError(result.error || 'Sign up failed. Please try again.');
+        Alert.alert('Error', result.error || 'Sign up failed. Please try again.');
+      }
+    } catch (err) {
+      // Handle unexpected errors
+      const errorMessage = 'An unexpected error occurred. Please try again.';
+      setError(errorMessage);
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSocialLogin = (provider) => {
@@ -108,6 +212,46 @@ const SignUpScreen = ({ navigation }) => {
               <View style={styles.card}>
                 {/* Title */}
                 <Text style={styles.heading}>Create your account</Text>
+
+                {/* Error Message */}
+                {error ? (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                ) : null}
+
+                {/* Email Verification Error Modal */}
+                <Modal
+                  isVisible={showEmailErrorModal}
+                  animationIn="fadeIn"
+                  animationOut="fadeOut"
+                  backdropOpacity={0.5}
+                  onBackdropPress={() => setShowEmailErrorModal(false)}
+                  useNativeDriver
+                >
+                  <View style={styles.emailErrorModal}>
+                    <View style={styles.emailErrorIconContainer}>
+                      {/* Warning SVG icon */}
+                      <Svg width={40} height={40} viewBox="0 0 24 24">
+                        <Path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" fill="#D32F2F"/>
+                      </Svg>
+                    </View>
+                    <Text style={styles.emailErrorTitle}>Network Error: Failed to send verification email.</Text>
+                    <Text style={styles.emailErrorMessage}>
+                      Please check your connection or try again later.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.emailErrorRetryButton}
+                      onPress={() => {
+                        setShowEmailErrorModal(false);
+                        handleSignUp(retryPayload);
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.emailErrorRetryText}>Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Modal>
 
                 {/* Name Field */}
                 <Text style={styles.label}>Name</Text>
@@ -178,11 +322,17 @@ const SignUpScreen = ({ navigation }) => {
 
                 {/* Sign Up Button */}
                 <TouchableOpacity
-                  style={styles.signUpButton}
-                  onPress={handleSignUp}
+                  style={[styles.signUpButton, loading && styles.signUpButtonDisabled]}
+                  onPress={() => handleSignUp()}
                   activeOpacity={0.85}
+                  disabled={loading}
                 >
-                  <Text style={styles.signUpButtonText}>SIGN UP</Text>
+                  {loading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <Text style={styles.signUpButtonText}>SIGN UP</Text>
+                  )}
+
                 </TouchableOpacity>
 
                 {/* Divider */}
@@ -247,6 +397,51 @@ const SOCIAL_BUTTON_SIZE = 50;
 const PRIMARY_BLUE = '#4B7BF5';
 
 const styles = StyleSheet.create({
+  emailErrorModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#F8D7DA',
+    shadowColor: '#D32F2F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  emailErrorIconContainer: {
+    marginBottom: 12,
+    backgroundColor: '#F8D7DA',
+    borderRadius: 24,
+    padding: 8,
+  },
+  emailErrorTitle: {
+    color: '#D32F2F',
+    fontWeight: 'bold',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 6,
+    marginTop: 2,
+  },
+  emailErrorMessage: {
+    color: '#B71C1C',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  emailErrorRetryButton: {
+    backgroundColor: '#D32F2F',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 32,
+    marginTop: 2,
+  },
+  emailErrorRetryText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
   flex: {
     flex: 1,
   },
@@ -407,6 +602,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.8,
+  },
+
+  signUpButtonDisabled: {
+    opacity: 0.6,
+  },
+
+  // Error container
+  errorContainer: {
+    backgroundColor: '#FFEBEE',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EF5350',
+  },
+
+  errorText: {
+    color: '#C62828',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 
   // Divider

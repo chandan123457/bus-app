@@ -12,10 +12,13 @@ import {
   Platform,
   ScrollView,
   BackHandler,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path } from 'react-native-svg';
+import { userAPI } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,6 +47,8 @@ const TwitterIcon = () => (
 const SignInScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const lastBackPressTime = useRef(0);
   const backPressTimer = useRef(null);
   const EXIT_DELAY = 1000; // 1 second window for double press
@@ -52,9 +57,7 @@ const SignInScreen = ({ navigation }) => {
   useEffect(() => {
     const backAction = () => {
       const currentTime = Date.now();
-      
-      if (lastBackPressTime.current !== 0 && 
-          currentTime - lastBackPressTime.current < EXIT_DELAY) {
+      if (lastBackPressTime.current !== 0 && currentTime - lastBackPressTime.current < EXIT_DELAY) {
         // Second back press within 1 second - exit immediately
         if (backPressTimer.current) {
           clearTimeout(backPressTimer.current);
@@ -63,10 +66,13 @@ const SignInScreen = ({ navigation }) => {
         BackHandler.exitApp();
         return true;
       } else {
-        // First back press - go back immediately and track time
+        // First back press
         lastBackPressTime.current = currentTime;
-        navigation.goBack();
-        
+        if (navigation.canGoBack && navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          BackHandler.exitApp();
+        }
         // Reset timer after delay
         if (backPressTimer.current) {
           clearTimeout(backPressTimer.current);
@@ -74,7 +80,6 @@ const SignInScreen = ({ navigation }) => {
         backPressTimer.current = setTimeout(() => {
           lastBackPressTime.current = 0;
         }, EXIT_DELAY);
-        
         return true; // Prevent default behavior
       }
     };
@@ -92,9 +97,74 @@ const SignInScreen = ({ navigation }) => {
     };
   }, [navigation]);
 
-  const handleSignIn = () => {
-    console.log('Sign in:', { email, password });
-    navigation.navigate('Home');
+  const validateForm = () => {
+    // Reset error
+    setError('');
+
+    // Check if email is empty
+    if (!email.trim()) {
+      setError('Email is required');
+      return false;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+
+    // Check if password is empty
+    if (!password) {
+      setError('Password is required');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSignIn = async () => {
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+
+    // Set loading state
+    setLoading(true);
+    setError('');
+
+    try {
+      // Call API
+      const result = await userAPI.signin({
+        email: email.trim().toLowerCase(),
+        password: password,
+      });
+
+      if (result.success) {
+        // Sign in successful - navigate to Home
+        navigation.navigate('Home');
+      } else {
+        // Show error message - backend returns "Invalid credentials" for:
+        // 1. Wrong email/password
+        // 2. User not verified (email verification required)
+        const errorMessage = result.error || 'Sign in failed. Please try again.';
+        
+        // Provide helpful message for invalid credentials
+        if (errorMessage.toLowerCase().includes('invalid credentials')) {
+          setError('Invalid credentials. Please check your email and password, or verify your email if you haven\'t already.');
+        } else {
+          setError(errorMessage);
+          Alert.alert('Sign In Failed', errorMessage);
+        }
+      }
+    } catch (err) {
+      // Handle unexpected errors
+      const errorMessage = 'An unexpected error occurred. Please try again.';
+      setError(errorMessage);
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSocialLogin = (provider) => {
@@ -170,13 +240,25 @@ const SignInScreen = ({ navigation }) => {
                   autoCapitalize="none"
                 />
 
+                {/* Error Message */}
+                {error ? (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                ) : null}
+
                 {/* Sign In Button */}
                 <TouchableOpacity
-                  style={styles.signInButton}
+                  style={[styles.signInButton, (loading || !email.trim() || !password) && styles.signInButtonDisabled]}
                   onPress={handleSignIn}
                   activeOpacity={0.85}
+                  disabled={loading}
                 >
-                  <Text style={styles.signInButtonText}>SIGN IN</Text>
+                  {loading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.signInButtonText}>SIGN IN</Text>
+                  )}
                 </TouchableOpacity>
 
                 {/* Social Sign-In Section */}
@@ -407,6 +489,27 @@ const styles = StyleSheet.create({
     color: PRIMARY_BLUE,
     fontSize: 14,
     fontWeight: '700',
+  },
+
+  // Error container
+  errorContainer: {
+    backgroundColor: '#FFEBEE',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EF5350',
+  },
+
+  errorText: {
+    color: '#C62828',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+
+  signInButtonDisabled: {
+    opacity: 0.6,
   },
 });
 
