@@ -187,13 +187,24 @@ export const userAPI = {
    */
   verifyEmail: async (data) => {
     try {
+      console.log('Sending verify email request to:', API_BASE_URL + API_ENDPOINTS.VERIFY_EMAIL);
+      console.log('Verify email data:', { email: data.email, otp: '***' });
+      
       const response = await api.post(API_ENDPOINTS.VERIFY_EMAIL, data);
+      console.log('Email verification success:', response.status);
+      
       return {
         success: true,
         data: response.data,
         message: response.data.message || 'Email verified successfully',
       };
     } catch (error) {
+      console.error('Email verification error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
       return {
         success: false,
         error: error.response?.data?.message || error.message || 'Email verification failed',

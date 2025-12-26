@@ -65,6 +65,10 @@ const SignUpScreen = ({ navigation }) => {
   const [error, setError] = useState('');
   const [showEmailErrorModal, setShowEmailErrorModal] = useState(false);
   const [retryPayload, setRetryPayload] = useState(null);
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [verifyingOTP, setVerifyingOTP] = useState(false);
+  const [otpError, setOtpError] = useState('');
 
   const validateForm = () => {
     // Reset error
@@ -134,19 +138,9 @@ const SignUpScreen = ({ navigation }) => {
       const result = await userAPI.signup(signupPayload);
 
       if (result.success) {
-        // Show success message
-        Alert.alert(
-          'Success',
-          result.message || 'Account created successfully! Please verify your email.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                navigation.navigate('SignIn');
-              },
-            },
-          ]
-        );
+        // Show OTP verification modal instead of navigating away
+        setShowOTPModal(true);
+        setError(''); // Clear any previous errors
       } else if (
         result.status === 401 &&
         result.error &&
@@ -178,6 +172,70 @@ const SignUpScreen = ({ navigation }) => {
 
   const handleTermsPress = () => {
     console.log('Open terms & policy');
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otp.trim() || otp.trim().length !== 6) {
+      setOtpError('Please enter a valid 6-digit OTP');
+      return;
+    }
+
+    setVerifyingOTP(true);
+    setOtpError('');
+
+    try {
+      const result = await userAPI.verifyEmail({
+        email: email.trim().toLowerCase(),
+        otp: otp.trim(),
+      });
+
+      if (result.success) {
+        // OTP verified successfully
+        Alert.alert(
+          'Email Verified',
+          'Your email has been verified successfully! You can now sign in.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setShowOTPModal(false);
+                setOtp('');
+                navigation.navigate('SignIn');
+              },
+            },
+          ]
+        );
+      } else {
+        // OTP verification failed
+        setOtpError(result.error || 'Invalid OTP. Please try again.');
+      }
+    } catch (err) {
+      setOtpError('An error occurred. Please try again.');
+    } finally {
+      setVerifyingOTP(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    // Resend OTP by calling signup again (backend sends OTP on signup)
+    setOtpError('');
+    setOtp('');
+    
+    try {
+      const result = await userAPI.signup({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password: password,
+      });
+
+      if (result.success) {
+        Alert.alert('OTP Resent', 'A new OTP has been sent to your email.');
+      } else {
+        setOtpError('Failed to resend OTP. Please try again.');
+      }
+    } catch (err) {
+      setOtpError('Failed to resend OTP. Please try again.');
+    }
   };
 
   return (
@@ -250,6 +308,73 @@ const SignUpScreen = ({ navigation }) => {
                     >
                       <Text style={styles.emailErrorRetryText}>Retry</Text>
                     </TouchableOpacity>
+                  </View>
+                </Modal>
+
+                {/* OTP Verification Modal */}
+                <Modal
+                  isVisible={showOTPModal}
+                  animationIn="slideInUp"
+                  animationOut="slideOutDown"
+                  backdropOpacity={0.5}
+                  onBackdropPress={() => {}} // Prevent closing by backdrop
+                  useNativeDriver
+                  style={styles.otpModal}
+                >
+                  <View style={styles.otpModalContent}>
+                    <View style={styles.otpModalHeader}>
+                      <Text style={styles.otpModalTitle}>Verify Your Email</Text>
+                      <Text style={styles.otpModalSubtitle}>
+                        We've sent a 6-digit OTP to{'\n'}
+                        <Text style={styles.otpEmailText}>{email}</Text>
+                      </Text>
+                    </View>
+
+                    {/* OTP Input */}
+                    <View style={styles.otpInputContainer}>
+                      <Text style={styles.otpLabel}>Enter OTP</Text>
+                      <TextInput
+                        style={styles.otpInput}
+                        placeholder="000000"
+                        placeholderTextColor="#A8A8A8"
+                        value={otp}
+                        onChangeText={(text) => {
+                          // Only allow numbers and limit to 6 digits
+                          const numericText = text.replace(/[^0-9]/g, '').slice(0, 6);
+                          setOtp(numericText);
+                          setOtpError('');
+                        }}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                        autoFocus
+                      />
+                      {otpError ? (
+                        <Text style={styles.otpErrorText}>{otpError}</Text>
+                      ) : null}
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View style={styles.otpButtonContainer}>
+                      <TouchableOpacity
+                        style={[styles.otpButton, styles.otpResendButton]}
+                        onPress={handleResendOTP}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.otpResendButtonText}>Resend OTP</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.otpButton, styles.otpVerifyButton, (verifyingOTP || !otp || otp.length !== 6) && styles.otpButtonDisabled]}
+                        onPress={handleVerifyOTP}
+                        activeOpacity={0.85}
+                        disabled={verifyingOTP || !otp || otp.length !== 6}
+                      >
+                        {verifyingOTP ? (
+                          <ActivityIndicator color="#FFFFFF" size="small" />
+                        ) : (
+                          <Text style={styles.otpVerifyButtonText}>Verify</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </Modal>
 
@@ -681,6 +806,106 @@ const styles = StyleSheet.create({
     color: PRIMARY_BLUE,
     fontSize: 13,
     fontWeight: '700',
+  },
+
+  // OTP Modal Styles
+  otpModal: {
+    justifyContent: 'flex-end',
+    margin: 0,
+  },
+  otpModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 32,
+    maxHeight: height * 0.6,
+  },
+  otpModalHeader: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  otpModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  otpModalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  otpEmailText: {
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  otpInputContainer: {
+    marginBottom: 24,
+  },
+  otpLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  otpInput: {
+    height: 56,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1F2937',
+    letterSpacing: 8,
+    textAlign: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  otpErrorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  otpButtonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  otpButton: {
+    flex: 1,
+    height: 50,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  otpResendButton: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  otpResendButtonText: {
+    color: '#1F2937',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  otpVerifyButton: {
+    backgroundColor: PRIMARY_BLUE,
+    shadowColor: PRIMARY_BLUE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  otpVerifyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  otpButtonDisabled: {
+    opacity: 0.5,
   },
 });
 

@@ -151,7 +151,7 @@ const SignInScreen = ({ navigation }) => {
         
         // Provide helpful message for invalid credentials
         if (errorMessage.toLowerCase().includes('invalid credentials')) {
-          setError('Invalid credentials. Please check your email and password, or verify your email if you haven\'t already.');
+          setError('Invalid credentials. Please verify your email first before signing in. Check your email for the verification OTP sent during signup.');
         } else {
           setError(errorMessage);
           Alert.alert('Sign In Failed', errorMessage);
