@@ -17,12 +17,16 @@
 // For development with mobile device, use your local IP address
 // For production, use your deployed backend URL
 const API_BASE_URL = __DEV__ 
-  ? 'http://10.128.175.125:3000'  // Updated for mobile testing: use your computer's IP
+  ? 'http://192.168.23.32:3000'  // Updated for mobile testing: use your computer's IP
   : 'https://your-production-api.com';  // ⚠️ Replace with your production backend URL
 
 // Log API URL in development for debugging
 if (__DEV__) {
-  console.log('API Base URL:', API_BASE_URL);
+  console.log('🔗 API Base URL:', API_BASE_URL);
+  console.log('💡 Network troubleshooting:');
+  console.log('   - Ensure backend server is running');
+  console.log('   - Check IP address matches your current network IP');
+  console.log('   - Mobile device must be on same WiFi network');
 }
 
 export const API_ENDPOINTS = {
