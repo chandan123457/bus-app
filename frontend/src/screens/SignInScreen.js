@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userAPI } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
@@ -140,26 +141,48 @@ const SignInScreen = ({ navigation }) => {
         password: password,
       });
 
+      console.log('Signin result:', result);
+
       if (result.success) {
+        // Safely extract token and user data
+        const token = result.data?.token;
+        const user = result.data?.user;
+        
+        if (!token || !user) {
+          console.error('Invalid response structure:', result.data);
+          setError('Invalid server response. Please try again.');
+          return;
+        }
+        
+        await AsyncStorage.setItem('authToken', token);
+        await AsyncStorage.setItem('userData', JSON.stringify(user));
+        
+        console.log('Sign in successful, stored token and user data');
+        
         // Sign in successful - navigate to Home
         navigation.navigate('Home');
       } else {
-        // Show error message - backend returns "Invalid credentials" for:
-        // 1. Wrong email/password
-        // 2. User not verified (email verification required)
+        // Show error message from API
         const errorMessage = result.error || 'Sign in failed. Please try again.';
+        
+        console.log('Signin failed:', errorMessage);
         
         // Provide helpful message for invalid credentials
         if (errorMessage.toLowerCase().includes('invalid credentials')) {
           setError('Invalid credentials. Please verify your email first before signing in. Check your email for the verification OTP sent during signup.');
         } else {
           setError(errorMessage);
-          Alert.alert('Sign In Failed', errorMessage);
+          if (errorMessage.includes('Cannot connect to server')) {
+            Alert.alert('Connection Error', errorMessage);
+          } else {
+            Alert.alert('Sign In Failed', errorMessage);
+          }
         }
       }
     } catch (err) {
-      // Handle unexpected errors
-      const errorMessage = 'An unexpected error occurred. Please try again.';
+      // This should rarely happen since userAPI.signin doesn't throw
+      console.error('Unexpected signin error:', err);
+      const errorMessage = `Unexpected error: ${err.message}`;
       setError(errorMessage);
       Alert.alert('Error', errorMessage);
     } finally {

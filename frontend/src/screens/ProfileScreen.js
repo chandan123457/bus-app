@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,13 @@ import {
   Dimensions,
   Switch,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { userAPI } from '../services/api';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -57,6 +60,65 @@ const ProfileScreen = ({ navigation }) => {
   const [gender, setGender] = useState('male');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [language, setLanguage] = useState('English');
+  const [loading, setLoading] = useState(true);
+  const [userStats, setUserStats] = useState({ totalBookings: 0, totalSpent: 0 });
+
+  // Fetch user profile data on component mount
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const userData = await AsyncStorage.getItem('userData');
+      
+      if (!token) {
+        Alert.alert('Not Logged In', 'Please sign in to view your profile', [
+          { text: 'OK', onPress: () => navigation.navigate('SignIn') }
+        ]);
+        return;
+      }
+
+      // If we have cached user data, show it immediately
+      if (userData) {
+        const user = JSON.parse(userData);
+        setName(user.name || '');
+        setEmail(user.email || '');
+        setMobileNumber(user.phone || '');
+      }
+
+      // Fetch fresh profile data from API
+      const result = await userAPI.getProfile(token);
+      
+      if (result.success) {
+        const profileData = result.data.user;
+        const stats = result.data.statistics;
+        
+        // Update state with fresh data
+        setName(profileData.name || '');
+        setEmail(profileData.email || '');
+        setMobileNumber(profileData.phone || '');
+        setUserStats({
+          totalBookings: stats?.totalBookings || 0,
+          totalSpent: stats?.totalSpent || 0
+        });
+        
+        // Update cached user data
+        await AsyncStorage.setItem('userData', JSON.stringify(profileData));
+      } else {
+        // If API fails but we have cached data, show cached data
+        if (!userData) {
+          Alert.alert('Error', result.error || 'Failed to load profile data');
+        }
+      }
+    } catch (error) {
+      console.error('Profile fetch error:', error);
+      Alert.alert('Error', 'Failed to load profile data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBottomNav = (tab) => {
     if (tab === 'Home') {
@@ -110,17 +172,40 @@ const ProfileScreen = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Profile Section Header */}
-          <View style={styles.profileSectionHeader}>
-            <Text style={styles.profileSectionTitle}>Profile Section</Text>
-            <TouchableOpacity style={styles.editButton} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="account-edit" size={18} color="#FFFFFF" />
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Loading State */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading profile...</Text>
+            </View>
+          ) : (
+            <>
+              {/* User Statistics Card */}
+              <View style={styles.statsCard}>
+                <Text style={styles.statsTitle}>Your Travel Stats</Text>
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{userStats.totalBookings}</Text>
+                    <Text style={styles.statLabel}>Total Bookings</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>₹{userStats.totalSpent.toFixed(0)}</Text>
+                    <Text style={styles.statLabel}>Total Spent</Text>
+                  </View>
+                </View>
+              </View>
 
-          {/* Profile Details Form */}
-          <View style={styles.formSection}>
+              {/* Profile Section Header */}
+              <View style={styles.profileSectionHeader}>
+                <Text style={styles.profileSectionTitle}>Profile Section</Text>
+                <TouchableOpacity style={styles.editButton} activeOpacity={0.7}>
+                  <MaterialCommunityIcons name="account-edit" size={18} color="#FFFFFF" />
+                  <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Profile Details Form */}
+              <View style={styles.formSection}>
             {/* Name */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Name</Text>
@@ -279,6 +364,8 @@ const ProfileScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="chevron-right" size={24} color="#9CA3AF" />
             </TouchableOpacity>
           </View>
+            </>
+          )}
         </ScrollView>
       </View>
 
@@ -631,6 +718,65 @@ const styles = StyleSheet.create({
   navLabelActive: {
     color: '#FFFFFF',
     fontWeight: '500',
+  },
+
+  // Loading State
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+
+  // Statistics Card
+  statsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  statsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#3B82F6',
+    marginBottom: 5,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 20,
   },
 });
 

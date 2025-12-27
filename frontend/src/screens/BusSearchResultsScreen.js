@@ -20,74 +20,310 @@ import { StatusBar } from 'expo-status-bar';
 
 const { width, height } = Dimensions.get('window');
 
-// Mock bus data - exact specifications
-const BUS_DATA = [
+// Test mode flag - set to true to show dummy data for UI testing
+const ENABLE_TEST_MODE = true;
+
+// Generate dynamic dummy bus data for testing
+const generateDummyBusData = (from, to, date) => {
+  const operators = ['VLR Travels', 'Sunrise Travels', 'Royal Express', 'Green Line', 'RedBus Express', 'BlueLine'];
+  const busTypes = ['A/C Sleeper (2+1)', 'A/C Seater (2+2)', 'Non A/C Sleeper', 'Volvo A/C', 'Multi Axle'];
+  const amenities = [['WiFi', 'AC', 'Charging'], ['AC', 'Charging'], ['WiFi', 'AC', 'Charging', 'Meals'], ['Charging', 'Reading Light'], ['WiFi', 'AC']];
+  
+  return Array.from({ length: 4 }, (_, index) => {
+    const depHour = 6 + index * 2;
+    const arrHour = depHour + 8 + Math.floor(Math.random() * 3);
+    const price = 500 + (index * 100) + Math.floor(Math.random() * 200);
+    const duration = `${8 + Math.floor(Math.random() * 3)}h ${Math.floor(Math.random() * 60)}m`;
+    
+    return {
+      id: `test_${index + 1}`,
+      operator: operators[index % operators.length],
+      busType: busTypes[index % busTypes.length],
+      departureTime: `${String(depHour).padStart(2, '0')}:${Math.floor(Math.random() * 6) * 10}0`,
+      arrivalTime: `${String(arrHour).padStart(2, '0')}:${Math.floor(Math.random() * 6) * 10}0`,
+      rating: (4.0 + Math.random() * 1.5).toFixed(1),
+      availableSeats: Math.floor(Math.random() * 30) + 5,
+      price: price,
+      duration: duration,
+      tag: index === 0 ? 'Fastest' : index === 1 ? 'Cheapest' : null,
+      amenities: amenities[index % amenities.length],
+      busNumber: `${operators[index % operators.length].slice(0, 3).toUpperCase()}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+      tripData: {
+        id: `test_trip_${index + 1}`,
+        route: `${from} to ${to}`,
+        date: date
+      },
+    };
+  });
+};
+
+// Static fallback bus data
+const staticBusData = [
   {
     id: '1',
     operator: 'VLR Travels',
     busType: 'A/C Sleeper (2+1)',
-    departureTime: '6:15 AM',
-    departureCity: 'Kathmandu',
-    arrivalTime: '2:15 PM',
-    arrivalCity: 'Pokhara',
+    departureTime: '6:15',
+    arrivalTime: '14:15',
     rating: 4.4,
-    seatsAvailable: 22,
+    availableSeats: 22,
     price: 680,
-    duration: '8 Hours',
+    duration: '8h 0m',
     tag: 'Fastest',
+    amenities: ['WiFi', 'AC', 'Charging'],
+    busNumber: 'KTM-1234',
   },
   {
     id: '2',
     operator: 'Sunrise Travels',
     busType: 'A/C Seater (2+2)',
-    departureTime: '7:30 AM',
-    departureCity: 'Kathmandu',
-    arrivalTime: '4:45 PM',
-    arrivalCity: 'Pokhara',
+    departureTime: '7:30',
+    arrivalTime: '16:45',
     rating: 4.2,
-    seatsAvailable: 15,
+    availableSeats: 15,
     price: 550,
-    duration: '9 Hours 15 Minutes',
+    duration: '9h 15m',
     tag: 'Cheapest',
+    amenities: ['AC', 'Charging'],
+    busNumber: 'SUN-5678',
   },
   {
     id: '3',
     operator: 'Royal Express',
     busType: 'A/C Sleeper (2+1)',
-    departureTime: '9:00 AM',
-    departureCity: 'Kathmandu',
-    arrivalTime: '5:30 PM',
-    arrivalCity: 'Pokhara',
+    departureTime: '9:00',
+    arrivalTime: '17:30',
     rating: 4.5,
-    seatsAvailable: 8,
+    availableSeats: 8,
     price: 850,
-    duration: '8 Hours 30 Minutes',
+    duration: '8h 30m',
     tag: null,
+    amenities: ['WiFi', 'AC', 'Charging', 'Meals'],
+    busNumber: 'ROY-9012',
   },
   {
     id: '4',
     operator: 'Green Line',
     busType: 'A/C Sleeper (2+1)',
-    departureTime: '10:15 AM',
-    departureCity: 'Kathmandu',
-    arrivalTime: '6:00 PM',
-    arrivalCity: 'Pokhara',
+    departureTime: '10:15',
+    arrivalTime: '18:00',
     rating: 4.6,
-    seatsAvailable: 12,
+    availableSeats: 12,
     price: 780,
-    duration: '7 Hours 45 Minutes',
+    duration: '7h 45m',
     tag: null,
+    amenities: ['WiFi', 'AC', 'Charging'],
+    busNumber: 'GRN-3456',
   },
 ];
 
 const BusSearchResultsScreen = ({ navigation, route }) => {
   const [selectedTab, setSelectedTab] = useState('Fastest');
+  const [busData, setBusData] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Get route params or use defaults
   const from = route?.params?.from || 'Jaipur';
   const to = route?.params?.to || 'Jodhpur';
   const date = route?.params?.date || '27 Sept 2025';
-  const stops = route?.params?.stops || 'Poornawatar → Vulagar pakkam';
+  const apiData = route?.params?.busData;
+  const searchData = route?.params?.searchData;
+
+  // Process API data into display format
+  const processApiData = (apiResponse) => {
+    console.log('Processing API response:', apiResponse);
+    
+    if (!apiResponse) {
+      console.log('No API response data');
+      return [];
+    }
+    
+    if (!apiResponse.trips || !Array.isArray(apiResponse.trips)) {
+      console.log('No trips array in API response');
+      return [];
+    }
+    
+    if (apiResponse.trips.length === 0) {
+      console.log('Empty trips array - no buses found');
+      return [];
+    }
+
+    return apiResponse.trips.map((trip, index) => {
+      console.log('Processing trip:', trip);
+      
+      const bus = trip?.bus || {};
+      const route = trip?.route || {};
+      const stops = Array.isArray(route?.stops) ? route.stops : [];
+      
+      // Safety check for searchData
+      const startLocation = searchData?.startLocation || from || '';
+      const endLocation = searchData?.endLocation || to || '';
+      
+      // Find departure and arrival times from stops with better error handling
+      const fromStop = stops.length > 0 ? stops.find(stop => 
+        stop?.location && typeof stop.location === 'string' && 
+        stop.location.toLowerCase().includes(startLocation.toLowerCase())
+      ) : null;
+      
+      const toStop = stops.length > 0 ? stops.find(stop => 
+        stop?.location && typeof stop.location === 'string' &&
+        stop.location.toLowerCase().includes(endLocation.toLowerCase())
+      ) : null;
+
+      // Calculate duration with safety checks
+      let duration = '8h 0m'; // Default duration
+      if (fromStop?.departureTime && toStop?.arrivalTime) {
+        try {
+          const depTime = new Date(`1970-01-01T${fromStop.departureTime}`);
+          const arrTime = new Date(`1970-01-01T${toStop.arrivalTime}`);
+          
+          if (!isNaN(depTime.getTime()) && !isNaN(arrTime.getTime())) {
+            let diffMs = arrTime.getTime() - depTime.getTime();
+            
+            // Handle next day arrivals
+            if (diffMs < 0) {
+              diffMs += 24 * 60 * 60 * 1000;
+            }
+            
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            duration = `${diffHours}h ${diffMinutes}m`;
+          }
+        } catch (error) {
+          console.log('Error calculating duration:', error);
+        }
+      }
+
+      // Calculate base price from stops with safety checks
+      let basePrice = 500; // Default base price
+      if (fromStop && toStop && stops.length > 0) {
+        try {
+          const fromIndex = stops.findIndex(stop => stop.id === fromStop.id);
+          const toIndex = stops.findIndex(stop => stop.id === toStop.id);
+          
+          if (fromIndex !== -1 && toIndex !== -1 && toIndex > fromIndex) {
+            let calculatedPrice = 0;
+            for (let i = fromIndex; i < toIndex; i++) {
+              calculatedPrice += stops[i]?.price || 0;
+            }
+            if (calculatedPrice > 0) {
+              basePrice = calculatedPrice;
+            }
+          }
+        } catch (error) {
+          console.log('Error calculating price:', error);
+        }
+      }
+
+      return {
+        id: trip.id || `trip_${index}`,
+        operator: bus.name || bus.operator || 'Bus Operator',
+        busType: bus.type || 'A/C Sleeper (2+1)',
+        departureTime: fromStop?.departureTime || '08:00',
+        arrivalTime: toStop?.arrivalTime || '16:00',
+        duration: duration,
+        price: basePrice,
+        rating: parseFloat(bus.rating) || (4.0 + Math.random() * 1),
+        amenities: bus.amenities || ['WiFi', 'AC', 'Charging'],
+        availableSeats: trip.availableSeats || Math.floor(Math.random() * 30) + 10,
+        busNumber: bus.busNumber || `BUS${String(index + 1).padStart(3, '0')}`,
+        tag: index === 0 ? 'Fastest' : index === 1 ? 'Cheapest' : null,
+        tripData: trip, // Store original trip data for booking
+      };
+    }).filter(trip => trip !== null); // Filter out any null entries
+  };
+
+  React.useEffect(() => {
+    console.log('BusSearchResultsScreen useEffect - API Data:', apiData);
+    console.log('Search Data:', searchData);
+    console.log('Route params:', { from, to, date });
+    
+    setLoading(false); // Ensure loading is false
+    
+    if (apiData) {
+      try {
+        const processedData = processApiData(apiData);
+        console.log('Processed Data:', processedData);
+        
+        if (processedData.length === 0 && ENABLE_TEST_MODE) {
+          // Show dummy data for testing when no real data is available
+          console.log('No real buses found - generating dummy data for testing');
+          const dummyData = generateDummyBusData(from, to, date);
+          setBusData(dummyData);
+        } else {
+          setBusData(processedData);
+        }
+        
+        if (processedData.length === 0 && !ENABLE_TEST_MODE) {
+          console.log('No buses found - API returned empty results');
+        } else if (processedData.length > 0) {
+          console.log(`Found ${processedData.length} buses`);
+        }
+      } catch (error) {
+        console.error('Error processing API data:', error);
+        if (ENABLE_TEST_MODE) {
+          console.log('Error occurred - falling back to dummy data for testing');
+          const dummyData = generateDummyBusData(from, to, date);
+          setBusData(dummyData);
+        } else {
+          setBusData([]);
+        }
+      }
+    } else {
+      if (ENABLE_TEST_MODE) {
+        console.log('No API data provided - generating dummy data for testing');
+        const dummyData = generateDummyBusData(from, to, date);
+        setBusData(dummyData);
+      } else {
+        console.log('No API data provided - showing empty state');
+        setBusData([]);
+      }
+    }
+  }, [apiData, searchData, from, to, date]);
+
+  const getDisplayData = () => {
+    if (busData.length === 0) {
+      return [];
+    }
+
+    // Sort based on selected tab
+    let sortedData = [...busData];
+    switch (selectedTab) {
+      case 'Fastest':
+        sortedData.sort((a, b) => {
+          const aDuration = parseFloat(a.duration) || 999;
+          const bDuration = parseFloat(b.duration) || 999;
+          return aDuration - bDuration;
+        });
+        break;
+      case 'Cheapest':
+        sortedData.sort((a, b) => a.price - b.price);
+        break;
+      case 'Departure':
+        sortedData.sort((a, b) => a.departureTime.localeCompare(b.departureTime));
+        break;
+      default:
+        // Keep original order
+        break;
+    }
+    return sortedData;
+  };
+
+  // Helper function to format time to 12-hour format
+  const formatTime = (time) => {
+    if (!time) return '00:00 AM';
+    
+    // Handle both 'HH:mm' and 'HH:mm:ss' formats
+    const [hours, minutes] = time.split(':').map(Number);
+    
+    if (isNaN(hours) || isNaN(minutes)) return time;
+    
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+    const displayMinutes = String(minutes).padStart(2, '0');
+    
+    return `${displayHours}:${displayMinutes} ${period}`;
+  };
 
   const handleBack = () => {
     navigation.goBack();
@@ -95,6 +331,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
 
   const handleChange = () => {
     console.log('Change search criteria');
+    navigation.goBack(); // Navigate back to HomeScreen to modify search
   };
 
   const handleTabPress = (tab) => {
@@ -158,8 +395,8 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
       {/* Journey Timeline Row */}
       <View style={styles.journeyRow}>
         <View style={styles.journeyPointLeft}>
-          <Text style={styles.journeyTime}>{item.departureTime}</Text>
-          <Text style={styles.journeyCity} numberOfLines={1}>{item.departureCity}</Text>
+          <Text style={styles.journeyTime}>{formatTime(item.departureTime)}</Text>
+          <Text style={styles.journeyCity} numberOfLines={1}>{from}</Text>
         </View>
 
         <View style={styles.journeyLine}>
@@ -172,8 +409,8 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
         </View>
 
         <View style={styles.journeyPointRight}>
-          <Text style={styles.journeyTimeRight}>{item.arrivalTime}</Text>
-          <Text style={styles.journeyCityRight} numberOfLines={1}>{item.arrivalCity}</Text>
+          <Text style={styles.journeyTimeRight}>{formatTime(item.arrivalTime)}</Text>
+          <Text style={styles.journeyCityRight} numberOfLines={1}>{to}</Text>
         </View>
       </View>
 
@@ -191,7 +428,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
         {/* Center: Passenger Count */}
         <View style={styles.seatsContainer}>
           <Text style={styles.seatIcon}>👤</Text>
-          <Text style={styles.seats}>{item.seatsAvailable}</Text>
+          <Text style={styles.seats}>{item.availableSeats || item.seatsAvailable || 0}</Text>
         </View>
 
         {/* Right: Price */}
@@ -240,9 +477,16 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Breadcrumb/Stops Info */}
+          {/* Test Mode Indicator */}
+          {ENABLE_TEST_MODE && (
+            <View style={styles.testModeIndicator}>
+              <Text style={styles.testModeText}>🧪 Test Mode: Showing dummy bus data</Text>
+            </View>
+          )}
+
+          {/* Breadcrumb/Route Info */}
           <View style={styles.breadcrumbContainer}>
-            <Text style={styles.breadcrumbText}>{stops}</Text>
+            <Text style={styles.breadcrumbText}>{from} → {to}</Text>
           </View>
 
           {/* Filter Tabs Section */}
@@ -312,12 +556,22 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
 
           {/* Main Content Area - Bus Cards */}
           <FlatList
-            data={BUS_DATA}
+            data={getDisplayData()}
             renderItem={renderBusCard}
             keyExtractor={(item) => item.id}
             style={styles.busList}
             contentContainerStyle={styles.busListContent}
             showsVerticalScrollIndicator={false}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  No buses available
+                </Text>
+                <Text style={styles.emptySubText}>
+                  No buses found from {from} to {to} on {date}.{"\n"}Please try a different route or date.
+                </Text>
+              </View>
+            )}
           />
         </SafeAreaView>
       </ImageBackground>
@@ -742,6 +996,49 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     width: '33.333%',
     textAlign: 'right',
+  },
+
+  // Empty state styles
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 20,
+  },
+
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+
+  emptySubText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  // Test mode indicator styles
+  testModeIndicator: {
+    backgroundColor: '#FFF3CD',
+    borderColor: '#FFEAA7',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+  },
+
+  testModeText: {
+    color: '#856404',
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });
 

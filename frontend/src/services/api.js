@@ -212,6 +212,93 @@ export const userAPI = {
       };
     }
   },
+
+  /**
+   * Get user profile
+   * @param {string} token - JWT token
+   * @returns {Promise} API response
+   */
+  getProfile: async (token) => {
+    try {
+      console.log('Fetching user profile');
+      
+      const response = await api.get(API_ENDPOINTS.PROFILE, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      return {
+        success: true,
+        data: response.data,
+        message: response.data.message || 'Profile fetched successfully',
+      };
+    } catch (error) {
+      console.error('Get profile error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Failed to fetch profile',
+        status: error.response?.status,
+      };
+    }
+  },
+};
+
+/**
+ * Bus API functions
+ */
+export const busAPI = {
+  /**
+   * Search buses for a route and date
+   * @param {Object} searchData - { startLocation, endLocation, date }
+   * @returns {Promise} API response with bus search results
+   */
+  searchBuses: async (searchData) => {
+    try {
+      console.log('Sending bus search request to:', API_BASE_URL + API_ENDPOINTS.SHOW_BUS);
+      console.log('Search data:', searchData);
+      
+      const response = await api.post(API_ENDPOINTS.SHOW_BUS, searchData);
+      console.log('Bus search success:', {
+        status: response.status,
+        resultCount: response.data?.trips?.length || 0,
+        fullResponse: response.data
+      });
+      
+      return {
+        success: true,
+        data: response.data,
+        message: response.data.message || 'Bus search successful',
+      };
+    } catch (error) {
+      console.error('Bus search error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        code: error.code,
+      });
+      
+      // Handle network errors specifically
+      if (!error.response && error.message) {
+        return {
+          success: false,
+          error: error.message || 'Network error. Please check your connection and ensure the server is running.',
+          status: null,
+        };
+      }
+      
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Bus search failed',
+        status: error.response?.status,
+      };
+    }
+  },
 };
 
 export default api;

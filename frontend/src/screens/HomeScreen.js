@@ -20,10 +20,14 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { busAPI } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -123,27 +127,114 @@ const ProfileIconNav = ({ active = false }) => (
 const HomeScreen = ({ navigation }) => {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [date, setDate] = useState('Select Date');
+  const [date, setDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState('Home');
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // DateTimePicker handlers
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+  };
+
+  const showDatepicker = () => {
+    setShowDatePicker(true);
+  };
+
+  const formatDisplayDate = (date) => {
+    return date.toLocaleDateString('en-GB', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    });
+  };
+
+  const formatDateForAPI = (selectedDate) => {
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleSearch = async () => {
+    // Validate inputs
+    if (!from || !to) {
+      Alert.alert('Missing Information', 'Please select both departure and destination locations.');
+      return;
+    }
+
+    if (from === to) {
+      Alert.alert('Invalid Route', 'Departure and destination locations cannot be the same.');
+      return;
+    }
+
+    if (!date || isNaN(date.getTime())) {
+      Alert.alert('Missing Information', 'Please select a travel date.');
+      return;
+    }
+
+    // Check if selected date is in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(date);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      Alert.alert('Invalid Date', 'Please select a future date.');
+      return;
+    }
+
+    setIsSearching(true);
+
+    try {
+      // Format date for API call
+      const formattedDateForAPI = formatDateForAPI(date);
+      
+      // Prepare search data
+      const searchData = {
+        startLocation: from.trim(),
+        endLocation: to.trim(),
+        date: formattedDateForAPI
+      };
+
+      console.log('Searching buses with data:', searchData);
+
+      // Call the bus search API
+      const response = await busAPI.searchBuses(searchData);
+      
+      console.log('API Response:', response);
+      console.log('API Response Data:', response.data);
+
+      if (response.success) {
+        // Format date for display
+        const displayDate = formatDisplayDate(date);
+
+        // Navigate to search results with real data
+        navigation.navigate('BusSearchResults', {
+          from: from,
+          to: to,
+          date: displayDate,
+          searchData: searchData,
+          busData: response.data,
+        });
+      } else {
+        Alert.alert('Search Failed', response.error || 'Unable to search buses. Please try again.');
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleSwap = () => {
     const temp = from;
     setFrom(to);
     setTo(temp);
-  };
-
-  const handleSearch = () => {
-    // Format date properly
-    const formattedDate = date instanceof Date 
-      ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-      : date;
-    
-    navigation.navigate('BusSearchResults', {
-      from: from || 'Jaipur',
-      to: to || 'Jodhpur',
-      date: formattedDate,
-      stops: 'Poornawatar → Vulagar pakkam',
-    });
   };
 
   const handleQuickAction = (action) => {
@@ -261,21 +352,44 @@ const HomeScreen = ({ navigation }) => {
             </View>
 
             {/* Date Selector */}
-            <TouchableOpacity style={styles.dateContainer} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.dateContainer} 
+              activeOpacity={0.7}
+              onPress={showDatepicker}
+            >
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <CalendarIcon />
-                <Text style={styles.dateText}>23-01-2002</Text>
+                <Text style={styles.dateText}>{formatDisplayDate(date)}</Text>
               </View>
               <Text style={styles.addReturnText}>+ Add return</Text>
             </TouchableOpacity>
 
+            {/* DateTimePicker */}
+            {showDatePicker && (
+              <DateTimePicker
+                value={date}
+                mode="date"
+                display="default"
+                minimumDate={new Date()}
+                onChange={handleDateChange}
+              />
+            )}
+
             {/* Search Button */}
             <TouchableOpacity
-              style={styles.searchButton}
+              style={[styles.searchButton, isSearching && styles.searchButtonDisabled]}
               onPress={handleSearch}
               activeOpacity={0.85}
+              disabled={isSearching}
             >
-              <Text style={styles.searchButtonText}>Search</Text>
+              {isSearching ? (
+                <View style={styles.searchButtonContent}>
+                  <ActivityIndicator size="small" color="#FFFFFF" style={styles.loadingIndicator} />
+                  <Text style={styles.searchButtonText}>Searching...</Text>
+                </View>
+              ) : (
+                <Text style={styles.searchButtonText}>Search</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -593,6 +707,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+
+  searchButtonDisabled: {
+    backgroundColor: '#87CEEB',
+    opacity: 0.8,
+  },
+
+  searchButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  loadingIndicator: {
+    marginRight: 8,
   },
 
   searchButtonText: {
