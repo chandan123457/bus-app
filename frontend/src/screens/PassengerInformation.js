@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,28 +9,102 @@ import {
   TextInput,
   StatusBar,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const PassengerInformation = ({ navigation, route }) => {
-  const { busData, selectedSeats } = route.params;
+  console.log('=== PASSENGERINFO RECEIVED DATA DEBUG ===');
+  console.log('Full route.params:', JSON.stringify(route.params, null, 2));
+  console.log('==========================================');
+  
+  const {
+    busData,
+    selectedSeats = [],
+    busInfo,
+    boardingPoint,
+    droppingPoint
+  } = route.params || {};
 
-  // Passenger information state
-  const [passengers, setPassengers] = useState(
-    selectedSeats.map(() => ({
-      name: '',
-      age: '',
-      gender: 'Male',
-    }))
-  );
+  const [actualSelectedSeats, setActualSelectedSeats] = useState(selectedSeats);
 
+  console.log('PassengerInformation extracted data:', {
+    busData: !!busData,
+    selectedSeatsCount: actualSelectedSeats.length,
+    selectedSeats: actualSelectedSeats,
+    busInfo: !!busInfo,
+    boardingPoint: !!boardingPoint,
+    droppingPoint: !!droppingPoint,
+  });
+
+  // Try to recover selectedSeats from AsyncStorage if empty
+  useEffect(() => {
+    if (!actualSelectedSeats || actualSelectedSeats.length === 0) {
+      console.log('Attempting to recover selectedSeats from AsyncStorage...');
+      AsyncStorage.getItem('selectedSeatsBackup')
+        .then(backupData => {
+          if (backupData) {
+            const parsedSeats = JSON.parse(backupData);
+            console.log('Recovered seats from AsyncStorage:', parsedSeats);
+            setActualSelectedSeats(parsedSeats);
+          } else {
+            console.log('No backup seats found in AsyncStorage');
+          }
+        })
+        .catch(err => console.warn('Failed to recover seats from AsyncStorage:', err));
+    }
+  }, []);
+
+  // Check if selectedSeats is empty and handle the error
+  if (!actualSelectedSeats || actualSelectedSeats.length === 0) {
+    console.error('No selected seats found in PassengerInformation!');
+    // Navigate back to seat selection
+    React.useEffect(() => {
+      Alert.alert(
+        'No Seats Selected',
+        'No seat information found. Please select seats again.',
+        [
+          {
+            text: 'Go Back to Seat Selection',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+    }, []);
+  }
+
+  // Passenger information state - initialize empty, will be populated when seats are available
+  const [passengers, setPassengers] = useState([]);
+
+  // Contact details state
   const [contactDetails, setContactDetails] = useState({
     phone: '',
     email: '',
   });
+
+  // Initialize passengers when actualSelectedSeats changes
+  useEffect(() => {
+    if (actualSelectedSeats && actualSelectedSeats.length > 0) {
+      const initialPassengers = actualSelectedSeats.map((seat, index) => ({
+        name: '',
+        age: '',
+        gender: 'Male',
+        seatId: seat.id, // Map passenger to seat ID
+        seatNumber: seat.seatNumber, // For display purposes
+        email: '', // Initialize email field
+        phone: '', // Initialize phone field  
+      }));
+      setPassengers(initialPassengers);
+      console.log('Passengers initialized for recovered seats:', initialPassengers);
+    }
+  }, [actualSelectedSeats]);
+
+  console.log('Current passengers:', passengers);
+  console.log('Current actualSelectedSeats:', actualSelectedSeats);
 
   const updatePassenger = (index, field, value) => {
     const updatedPassengers = [...passengers];
@@ -39,14 +113,81 @@ const PassengerInformation = ({ navigation, route }) => {
   };
 
   const handleProceed = () => {
-    console.log('Passengers:', passengers);
+    // Validate all passenger information
+    const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    
+    for (let i = 0; i < passengers.length; i++) {
+      const passenger = passengers[i];
+      
+      if (!passenger.name.trim()) {
+        alert(`Please enter name for Passenger ${i + 1}`);
+        return;
+      }
+      
+      if (!passenger.age || isNaN(passenger.age) || passenger.age < 1 || passenger.age > 120) {
+        alert(`Please enter valid age for Passenger ${i + 1} (1-120)`);
+        return;
+      }
+      
+      if (!passenger.email.trim()) {
+        alert(`Please enter email for Passenger ${i + 1}`);
+        return;
+      }
+      
+      if (!isValidEmail(passenger.email)) {
+        alert(`Please enter valid email for Passenger ${i + 1}`);
+        return;
+      }
+    }
+    
+    // Validate contact details
+    if (!contactDetails.phone.trim()) {
+      alert('Please enter contact phone number');
+      return;
+    }
+    
+    if (!contactDetails.email.trim()) {
+      alert('Please enter contact email');
+      return;
+    }
+    
+    if (!isValidEmail(contactDetails.email)) {
+      alert('Please enter valid contact email');
+      return;
+    }
+    
+    // Ensure passengers have seatId
+    const passengersWithSeatId = passengers.map((passenger, index) => ({
+      ...passenger,
+      age: parseInt(passenger.age),
+      gender: passenger.gender.toUpperCase(),
+      seatId: passenger.seatId || actualSelectedSeats[index]?.id,
+    }));
+
+    console.log('=== PASSENGERINFO NAVIGATION DEBUG ===');
+    console.log('Validated passengers:', passengersWithSeatId);
     console.log('Contact:', contactDetails);
+    console.log('Selected seats with IDs:', actualSelectedSeats.map(seat => ({ id: seat.id, number: seat.seatNumber })));
+    console.log('Navigation params being passed:', {
+      busData: !!busData,
+      selectedSeats: actualSelectedSeats,
+      passengers: passengersWithSeatId,
+      contactDetails: contactDetails,
+      busInfo: !!busInfo,
+      boardingPoint: !!boardingPoint,
+      droppingPoint: !!droppingPoint,
+    });
+    console.log('==========================================');
+    
     // Navigate to payment screen
     navigation.navigate('Payment', {
       busData: busData,
-      selectedSeats: selectedSeats,
-      passengers: passengers,
+      selectedSeats: actualSelectedSeats,
+      passengers: passengersWithSeatId,
       contactDetails: contactDetails,
+      busInfo: busInfo,
+      boardingPoint: boardingPoint,
+      droppingPoint: droppingPoint,
     });
   };
 
@@ -100,10 +241,10 @@ const PassengerInformation = ({ navigation, route }) => {
         <View style={styles.cardOverlapping}>
           <Text style={styles.cardTitle}>Passenger Information</Text>
           
-          {selectedSeats.map((seat, index) => (
+          {actualSelectedSeats.map((seat, index) => (
             <View key={index} style={styles.passengerSection}>
               <Text style={styles.passengerLabel}>
-                Passenger {index + 1}
+                Passenger {index + 1} - Seat {seat.seatNumber || `Seat ${index + 1}`}
               </Text>
               
               {/* Full Name Input */}
@@ -113,6 +254,16 @@ const PassengerInformation = ({ navigation, route }) => {
                 placeholderTextColor="#9CA3AF"
                 value={passengers[index].name}
                 onChangeText={(text) => updatePassenger(index, 'name', text)}
+              />
+              
+              {/* Email Input */}
+              <TextInput
+                style={styles.input}
+                placeholder="Email Address (Required)"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="email-address"
+                value={passengers[index].email}
+                onChangeText={(text) => updatePassenger(index, 'email', text)}
               />
               
               {/* Age and Gender Row */}

@@ -20,6 +20,7 @@ import BookingsScreen from '../screens/BookingsScreen';
 import OffersScreen from '../screens/OffersScreen';
 import HelpSupportScreen from '../screens/HelpSupportScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import BoardingPointsScreen from '../screens/BoardingPointsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -96,6 +97,15 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="SeatSelectionDuplicate" 
           component={SeatSelectionDuplicate}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+
+        {/* Boarding Points Selection Screen */}
+        <Stack.Screen 
+          name="BoardingPoints" 
+          component={BoardingPointsScreen}
           options={{
             animation: 'slide_from_right',
           }}

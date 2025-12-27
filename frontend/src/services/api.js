@@ -299,6 +299,191 @@ export const busAPI = {
       };
     }
   },
+
+  /**
+   * Get detailed bus information for seat selection
+   * @param {string} tripId - Trip ID
+   * @param {string} fromStopId - From stop ID
+   * @param {string} toStopId - To stop ID
+   * @param {string} token - JWT token (optional)
+   * @returns {Promise} API response with bus details
+   */
+  getBusInfo: async (tripId, fromStopId, toStopId, token = null) => {
+    try {
+      console.log('🚌 API Call Debug - Fetching bus info for trip:', tripId);
+      console.log('🚌 API Call Debug - Stop IDs:', { fromStopId, toStopId });
+      console.log('🚌 API Call Debug - Trip ID type:', typeof tripId);
+      console.log('🚌 API Call Debug - Trip ID length:', tripId?.length);
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const endpoint = `${API_ENDPOINTS.BUS_INFO}/${tripId}`;
+      const queryParams = `?fromStopId=${fromStopId}&toStopId=${toStopId}`;
+      const fullUrl = endpoint + queryParams;
+      
+      console.log('🚌 API Call Debug - Full URL:', fullUrl);
+      console.log('🚌 API Call Debug - Base URL:', API_BASE_URL);
+      
+      const response = await api.get(fullUrl, {
+        headers,
+      });
+      
+      console.log('Bus info success:', {
+        status: response.status,
+        hasSeats: !!response.data?.seats,
+        hasBoardingPoints: !!response.data?.boardingPoints,
+      });
+      
+      return {
+        success: true,
+        data: response.data,
+        message: response.data.message || 'Bus info fetched successfully',
+      };
+    } catch (error) {
+      console.error('Bus info error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        code: error.code,
+      });
+      
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Failed to fetch bus info',
+        status: error.response?.status,
+      };
+    }
+  },
+};
+
+/**
+ * Payment and Coupon API functions
+ */
+api.applyCoupon = async (couponData, token) => {
+  try {
+    console.log('Applying coupon:', { code: couponData.code, tripId: couponData.tripId });
+    
+    const response = await api.post(API_ENDPOINTS.APPLY_COUPON, couponData, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    
+    console.log('Coupon application success:', {
+      status: response.status,
+      discountAmount: response.data?.discountAmount,
+      finalAmount: response.data?.finalAmount,
+    });
+    
+    return {
+      success: true,
+      data: response.data,
+      message: response.data.message || 'Coupon applied successfully',
+    };
+  } catch (error) {
+    console.error('Coupon application error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    
+    return {
+      success: false,
+      error: error.response?.data?.errorMessage || error.message || 'Failed to apply coupon',
+      status: error.response?.status,
+    };
+  }
+};
+
+api.initiatePayment = async (paymentData, token) => {
+  try {
+    console.log('Initiating payment:', { 
+      method: paymentData.paymentMethod,
+      tripId: paymentData.tripId,
+      seatCount: paymentData.seatIds?.length 
+    });
+    
+    const response = await api.post(API_ENDPOINTS.PAYMENT_INITIATE, paymentData, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    
+    console.log('Payment initiation success:', {
+      status: response.status,
+      paymentId: response.data?.paymentId,
+      method: response.data?.method,
+    });
+    
+    return {
+      success: true,
+      data: response.data,
+      message: response.data.message || 'Payment initiated successfully',
+    };
+  } catch (error) {
+    console.error('Payment initiation error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      requestData: paymentData,
+    });
+    
+    // Log detailed validation errors if available
+    if (error.response?.data?.errors) {
+      console.error('Validation errors:', error.response.data.errors);
+    }
+    
+    return {
+      success: false,
+      error: error.response?.data?.errorMessage || error.message || 'Failed to initiate payment',
+      status: error.response?.status,
+      validationErrors: error.response?.data?.errors || null,
+    };
+  }
+};
+
+api.verifyPayment = async (verificationData, token) => {
+  try {
+    console.log('Verifying payment:', { paymentId: verificationData.paymentId });
+    
+    const response = await api.post(API_ENDPOINTS.PAYMENT_VERIFY, verificationData, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    
+    console.log('Payment verification success:', {
+      status: response.status,
+      bookingId: response.data?.booking?.id,
+    });
+    
+    return {
+      success: true,
+      data: response.data,
+      message: response.data.message || 'Payment verified successfully',
+    };
+  } catch (error) {
+    console.error('Payment verification error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    
+    return {
+      success: false,
+      error: error.response?.data?.errorMessage || error.message || 'Failed to verify payment',
+      status: error.response?.status,
+    };
+  }
 };
 
 export default api;

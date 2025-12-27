@@ -42,6 +42,13 @@ export const API_ENDPOINTS = {
   BUS_INFO: '/user/showbusinfo',
   MY_BOOKINGS: '/user/mybookings',
   
+  // Payment endpoints
+  PAYMENT_INITIATE: '/user/payments/initiate',
+  PAYMENT_VERIFY: '/user/payments/verify',
+  
+  // Coupon endpoints
+  APPLY_COUPON: '/user/booking/apply-coupon',
+  
   // Other endpoints
   PROFILE: '/user/profile',
   OFFERS: '/user/offers',
