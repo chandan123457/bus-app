@@ -16,8 +16,149 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
 import api from '../services/api';
+import CryptoJS from 'crypto-js';
+
+// Import RazorpayCheckout properly
+import RazorpayCheckout from 'react-native-razorpay';
+
+// Debug function to check environment
+const checkPaymentEnvironment = () => {
+  console.log('🔍 Payment Environment Check:', {
+    hasRazorpay: !!RazorpayCheckout,
+    razorpayType: typeof RazorpayCheckout,
+    hasOpenMethod: RazorpayCheckout && typeof RazorpayCheckout.open === 'function',
+    platform: require('react-native').Platform.OS,
+    isDevelopment: __DEV__
+  });
+  
+  if (!RazorpayCheckout) {
+    console.error('❌ RazorpayCheckout is not available. This means:');
+    console.error('   - You may be running in Expo Go (native modules not supported)');
+    console.error('   - Package not properly installed or linked');
+    console.error('   - Need to create a development build or production build');
+  } else if (typeof RazorpayCheckout.open !== 'function') {
+    console.error('❌ RazorpayCheckout.open is not a function');
+    console.error('   - Package may be incorrectly imported');
+    console.error('   - Version mismatch or corrupted installation');
+  } else {
+    console.log('✅ RazorpayCheckout is properly available');
+  }
+};
 
 const PaymentScreen = ({ navigation, route }) => {
+  // Demo Razorpay configuration - Using the same secret as backend
+  const DEMO_RAZORPAY_KEY_SECRET = 'lVO33r15GL7bZyt92KjSvO41';
+
+  // Generate Razorpay signature for demo purposes
+  const generateRazorpaySignature = (orderId, paymentId, secret) => {
+    const payload = `${orderId}|${paymentId}`;
+    const signature = CryptoJS.HmacSHA256(payload, secret).toString(CryptoJS.enc.Hex);
+    console.log('🔐 Signature generation:', {
+      orderId,
+      paymentId,
+      payload,
+      secret: secret.substring(0, 8) + '...',
+      signature
+    });
+    return signature;
+  };
+
+  // Open Razorpay checkout - REAL PAYMENTS ONLY
+  const openRazorpayCheckout = async (paymentData, token) => {
+    console.log('🏁 Starting REAL Razorpay checkout (no simulation)...');
+    
+    // Check if running in Expo Go
+    const isExpoGo = Constants.executionEnvironment === 'storeClient';
+    if (isExpoGo) {
+      Alert.alert(
+        'Real Payments Not Available in Expo Go', 
+        'You are currently running in Expo Go which doesn\'t support native payment modules.\n\nTo process REAL payments, you need:\n\n1. Build a development build: "expo dev-build"\n2. Install on a physical device\n3. Or use a production build\n\nSimulated payments are disabled as requested.',
+        [{ text: 'Understood', style: 'default' }]
+      );
+      return;
+    }
+
+    try {
+      // Check if RazorpayCheckout is available
+      console.log('🔍 Checking Razorpay availability:', {
+        RazorpayCheckout: !!RazorpayCheckout,
+        type: typeof RazorpayCheckout,
+        hasOpen: RazorpayCheckout && typeof RazorpayCheckout.open === 'function',
+        isFunction: typeof RazorpayCheckout?.open
+      });
+
+      if (!RazorpayCheckout) {
+        console.error('❌ RazorpayCheckout is null - package not available');
+        Alert.alert(
+          'Payment Module Not Available',
+          'The Razorpay payment module is not properly installed or linked. Please ensure:\n\n1. react-native-razorpay is installed\n2. App is built as development/production build\n3. Native modules are properly linked\n\nSimulated payments are disabled as requested.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (typeof RazorpayCheckout.open !== 'function') {
+        console.error('❌ RazorpayCheckout.open is not a function:', typeof RazorpayCheckout.open);
+        Alert.alert(
+          'Payment Module Incomplete',
+          'The Razorpay SDK is not properly initialized. Real payment processing is not available.\n\nSimulated payments are disabled as requested.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const options = {
+        description: `Bus Booking - ${busData?.operator || 'Bus Service'}`,
+        image: 'https://i.imgur.com/3g7nmJC.png',
+        currency: paymentData.currency || 'INR',
+        key: paymentData.razorpayKeyId,
+        amount: Math.round(paymentData.amount * 100),
+        order_id: paymentData.orderId,
+        name: 'Bus Booking',
+        prefill: {
+          email: contactDetails?.email || passengers?.[0]?.email || '',
+          contact: contactDetails?.phone || '',
+          name: passengers?.[0]?.name || ''
+        },
+        theme: { color: '#2B636E' }
+      };
+
+      console.log('🚀 Opening native Razorpay checkout with options:', {
+        ...options,
+        amount: options.amount / 100,
+        key: options.key.substring(0, 8) + '...'
+      });
+
+      const data = await RazorpayCheckout.open(options);
+      console.log('✅ REAL Razorpay payment success:', data);
+
+      await verifyRazorpayPayment(data, paymentData, token);
+
+    } catch (error) {
+      console.error('💥 Razorpay checkout error:', error);
+      
+      // Handle specific Razorpay errors without fallbacks
+      if (error.code && RazorpayCheckout) {
+        switch (error.code) {
+          case RazorpayCheckout.PAYMENT_CANCELLED:
+            Alert.alert('Payment Cancelled', 'You have cancelled the payment.');
+            break;
+          case RazorpayCheckout.NETWORK_ERROR:
+            Alert.alert('Network Error', 'Please check your internet connection and try again.');
+            break;
+          default:
+            Alert.alert('Payment Failed', error.description || 'Payment could not be processed.');
+        }
+      } else {
+        // For other errors, show error without fallback
+        Alert.alert(
+          'Payment Processing Error',
+          `Real payment could not be processed: ${error.message}\n\nSimulated payments are disabled as requested.`,
+          [{ text: 'OK' }]
+        );
+      }
+    }
+  };
   console.log('=== PAYMENT RECEIVED DATA DEBUG ===');
   console.log('Full route.params:', JSON.stringify(route.params, null, 2));
   console.log('==========================================');
@@ -38,6 +179,9 @@ const PaymentScreen = ({ navigation, route }) => {
 
   // Try to recover selectedSeats from AsyncStorage if empty
   useEffect(() => {
+    // Debug payment environment
+    checkPaymentEnvironment();
+    
     if (!actualSelectedSeats || actualSelectedSeats.length === 0) {
       console.log('PaymentScreen: Attempting to recover selectedSeats from AsyncStorage...');
       AsyncStorage.getItem('selectedSeatsBackup')
@@ -87,6 +231,7 @@ const PaymentScreen = ({ navigation, route }) => {
   const [paymentUrl, setPaymentUrl] = useState('');
   const [currentPaymentId, setCurrentPaymentId] = useState('');
   const [authToken, setAuthToken] = useState('');
+  const [showWebView, setShowWebView] = useState({ visible: false, html: '', paymentData: null, token: null });
 
   const paymentMethods = [
     { id: 'RAZORPAY', label: 'Razorpay' },
@@ -259,21 +404,8 @@ const PaymentScreen = ({ navigation, route }) => {
       setCurrentPaymentId(paymentResult.paymentId);
 
       if (selectedPaymentMethod === 'RAZORPAY') {
-        // For Expo/demo: Show a success message instead of opening actual Razorpay
-        Alert.alert(
-          'Razorpay Payment',
-          'In a production app, this would open the Razorpay payment interface. For demo purposes, simulating successful payment.',
-          [
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-            {
-              text: 'Simulate Success',
-              onPress: () => simulateSuccessfulPayment(paymentResult, token),
-            },
-          ]
-        );
+        // Open actual Razorpay checkout
+        await openRazorpayCheckout(paymentResult, token);
       } else if (selectedPaymentMethod === 'ESEWA') {
         // Handle eSewa payment
         await handleEsewaPayment(paymentResult, token);
@@ -289,14 +421,134 @@ const PaymentScreen = ({ navigation, route }) => {
     }
   };
 
+  // WebView-based Razorpay integration (fallback for Expo)
+  const openRazorpayWebView = async (paymentData, token) => {
+    console.log('🌐 WebView Razorpay fallback triggered');
+    
+    Alert.alert(
+      'Payment Method Notice',
+      'Native Razorpay checkout is not available in this environment (Expo Go). Would you like to proceed with a simulated payment for testing?',
+      [
+        { 
+          text: 'Cancel', 
+          style: 'cancel',
+          onPress: () => setPaymentLoading(false)
+        },
+        {
+          text: 'Simulate Payment',
+          onPress: () => {
+            console.log('📱 User chose to simulate payment in Expo environment');
+            simulateSuccessfulPayment(paymentData, token);
+          }
+        },
+        {
+          text: 'Learn More',
+          onPress: () => {
+            Alert.alert(
+              'About Payment Integration',
+              'In development:\n• Expo Go: Simulated payments\n• Production build: Real Razorpay\n\nFor real payments, create a production build of this app.',
+              [{ text: 'OK', onPress: () => simulateSuccessfulPayment(paymentData, token) }]
+            );
+          }
+        }
+      ]
+    );
+  };
+
+  // Verify actual Razorpay payment response
+  const verifyRazorpayPayment = async (razorpayResponse, paymentData, token) => {
+    try {
+      console.log('🔍 Verifying actual Razorpay payment response:', razorpayResponse);
+
+      // Prepare verification data using actual Razorpay response
+      const verificationData = {
+        paymentId: paymentData.paymentId,
+        razorpayOrderId: razorpayResponse.razorpay_order_id,
+        razorpayPaymentId: razorpayResponse.razorpay_payment_id,
+        razorpaySignature: razorpayResponse.razorpay_signature,
+      };
+
+      console.log('📤 Sending payment verification data:', {
+        ...verificationData,
+        razorpaySignature: verificationData.razorpaySignature.substring(0, 16) + '...'
+      });
+
+      const verificationResponse = await api.verifyPayment(verificationData, token);
+      
+      console.log('📋 Payment verification response:', verificationResponse);
+      
+      if (verificationResponse.success) {
+        Alert.alert(
+          'Payment Successful! ✅',
+          `Your booking has been confirmed!\n\nPayment ID: ${razorpayResponse.razorpay_payment_id}\nBooking will be processed shortly.`,
+          [
+            {
+              text: 'View Bookings',
+              onPress: () => {
+                // Navigate to bookings or home
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'BusSearchScreen' }],
+                });
+              },
+            },
+            {
+              text: 'OK',
+              onPress: () => {
+                console.log('Payment completed successfully');
+              },
+            },
+          ]
+        );
+      } else {
+        throw new Error(verificationResponse.error || 'Payment verification failed');
+      }
+    } catch (error) {
+      console.error('💥 Payment verification error:', error.message);
+      console.error('📍 Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      
+      // More specific error messaging
+      let errorMessage = 'Payment verification failed. Please contact support.';
+      
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.errorMessage || 'Payment verification failed due to invalid data.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication error. Please sign in again.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Payment not found. Please try again.';
+      } else if (!error.response) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+
+      Alert.alert('Payment Verification Failed', errorMessage);
+    }
+  };
+
   const simulateSuccessfulPayment = async (paymentData, token) => {
     try {
-      // In a real app, this would be the response from Razorpay
+      // Generate realistic payment ID for demo
+      const demoPaymentId = 'demo_payment_' + Date.now();
+      
+      // Generate proper signature using the same logic as backend
+      const generatedSignature = generateRazorpaySignature(
+        paymentData.orderId, 
+        demoPaymentId, 
+        DEMO_RAZORPAY_KEY_SECRET
+      );
+
+      // Generate more realistic mock data for demo purposes
       const mockRazorpayResponse = {
         razorpay_order_id: paymentData.orderId,
-        razorpay_payment_id: 'demo_payment_' + Date.now(),
-        razorpay_signature: 'demo_signature',
+        razorpay_payment_id: demoPaymentId,
+        razorpay_signature: generatedSignature, // Now using properly generated signature
       };
+
+      console.log('🎯 Mock Razorpay Response:', mockRazorpayResponse);
+      console.log('🔐 Generated signature for payload:', `${paymentData.orderId}|${demoPaymentId}`);
 
       // Verify payment with backend
       const verificationData = {
@@ -306,7 +558,14 @@ const PaymentScreen = ({ navigation, route }) => {
         razorpaySignature: mockRazorpayResponse.razorpay_signature,
       };
 
+      console.log('🔍 Payment verification data being sent:', {
+        ...verificationData,
+        razorpaySignature: verificationData.razorpaySignature.substring(0, 16) + '...'
+      });
+
       const verificationResponse = await api.verifyPayment(verificationData, token);
+      
+      console.log('📋 Payment verification response:', verificationResponse);
       
       if (verificationResponse.success) {
         Alert.alert(
@@ -326,11 +585,27 @@ const PaymentScreen = ({ navigation, route }) => {
         throw new Error('Payment verification failed');
       }
     } catch (error) {
-      console.error('Payment verification error:', error);
-      Alert.alert(
-        'Payment Verification Failed',
-        error.message || 'Payment verification failed. Please contact support.'
-      );
+      console.error('💥 Payment simulation error:', error.message);
+      console.error('📍 Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      
+      // More specific error messaging
+      let errorMessage = 'Payment verification failed. Please contact support.';
+      
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.errorMessage || 'Payment verification failed due to invalid data.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication error. Please sign in again.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Payment not found. Please try again.';
+      } else if (!error.response) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+
+      Alert.alert('Payment Verification Failed', errorMessage);
     }
   };
 

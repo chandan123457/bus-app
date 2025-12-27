@@ -17,7 +17,7 @@
 // For development with mobile device, use your local IP address
 // For production, use your deployed backend URL
 const API_BASE_URL = __DEV__ 
-  ? 'http://192.168.23.32:3000'  // Updated for mobile testing: use your computer's IP
+  ? 'http://192.168.27.60:3000'  // Updated for mobile testing: use your computer's IP
   : 'https://your-production-api.com';  // ⚠️ Replace with your production backend URL
 
 // Log API URL in development for debugging

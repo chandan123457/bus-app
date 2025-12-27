@@ -131,23 +131,19 @@ const SeatSelectionScreen = ({ navigation, route }) => {
         const newSeatStates = {};
         const newSeatMapping = {};
         
-        // Get route fare for pricing
-        const routeFare = response.data.route?.fare || 0;
-        
         // Process lower deck seats
         if (response.data.seats?.lowerDeck) {
           response.data.seats.lowerDeck.forEach(seat => {
-            const seatNumber = seat.seatNumber;
-            newSeatStates[seatNumber] = seat.isAvailable ? 'available' : 'booked';
-            newSeatMapping[seatNumber] = {
+            const seatId = seat.id; // Use seat ID as unique key
+            newSeatStates[seatId] = seat.isAvailable ? 'available' : 'booked';
+            newSeatMapping[seatId] = {
               id: seat.id,
               seatNumber: seat.seatNumber,
               type: seat.type,
               level: seat.level,
               row: seat.row,
               column: seat.column,
-              isAvailable: seat.isAvailable,
-              fare: routeFare // Use route-level fare
+              isAvailable: seat.isAvailable
             };
           });
         }
@@ -155,17 +151,16 @@ const SeatSelectionScreen = ({ navigation, route }) => {
         // Process upper deck seats if available
         if (response.data.seats?.upperDeck) {
           response.data.seats.upperDeck.forEach(seat => {
-            const seatNumber = seat.seatNumber;
-            newSeatStates[seatNumber] = seat.isAvailable ? 'available' : 'booked';
-            newSeatMapping[seatNumber] = {
+            const seatId = seat.id; // Use seat ID as unique key
+            newSeatStates[seatId] = seat.isAvailable ? 'available' : 'booked';
+            newSeatMapping[seatId] = {
               id: seat.id,
               seatNumber: seat.seatNumber,
               type: seat.type,
               level: seat.level,
               row: seat.row,
               column: seat.column,
-              isAvailable: seat.isAvailable,
-              fare: routeFare // Use route-level fare
+              isAvailable: seat.isAvailable
             };
           });
         }
@@ -175,9 +170,9 @@ const SeatSelectionScreen = ({ navigation, route }) => {
         console.log('🎯 Seat states loaded:', newSeatStates);
         console.log('🎯 Seat mapping loaded:', newSeatMapping);
         console.log('🎯 Available seats count:', response.data.seats?.availableCount || 0);
-        console.log('🎯 Lower deck seats from backend:', response.data.seats?.lowerDeck || []);
-        console.log('🎯 Upper deck seats from backend:', response.data.seats?.upperDeck || []);
-        console.log('🎯 Backend seat numbers:', (response.data.seats?.lowerDeck || []).map(s => s.seatNumber));
+        console.log('🎯 Backend seat numbers:', Object.keys(newSeatStates));
+        console.log('🎯 Backend lower deck seats:', response.data.seats?.lowerDeck || []);
+        console.log('🎯 Backend upper deck seats:', response.data.seats?.upperDeck || []);
         
       } else {
         throw new Error(response.error || 'Failed to fetch seat data from server');
@@ -227,111 +222,80 @@ const SeatSelectionScreen = ({ navigation, route }) => {
       : { color: '#FFFFFF' };
   };
 
-  const renderSeat = (seatNumber, state, seatData) => (
+  const renderSeat = (seat, state) => (
     <TouchableOpacity
-      key={seatNumber}
+      key={seat.id} // Use unique seat ID as key instead of seatNumber
       style={[styles.seat, getSeatStyle(state)]}
-      onPress={() => handleSeatPress(seatNumber)}
+      onPress={() => handleSeatPress(seat.id)} // Use seat ID for state management
       disabled={state === 'booked'}
       activeOpacity={0.7}
     >
       <Text style={[styles.seatText, getSeatTextStyle(state)]}>
-        {seatNumber}
+        {seat.seatNumber}
       </Text>
     </TouchableOpacity>
   );
 
-  // Dynamic seat layout rendering based on actual backend data
-  const renderDynamicSeatLayout = () => {
+  // Render seats dynamically from backend data instead of hardcoded grid
+  const renderDynamicSeats = () => {
     if (!busInfo?.seats) {
       return (
         <View style={styles.seatsGrid}>
           <Text style={{ textAlign: 'center', padding: 20, color: '#666' }}>
-            Loading seat layout...
+            Loading seats...
           </Text>
         </View>
       );
     }
 
-    const lowerDeckSeats = busInfo.seats.lowerDeck || [];
-    const upperDeckSeats = busInfo.seats.upperDeck || [];
+    const allSeats = [...(busInfo.seats.lowerDeck || []), ...(busInfo.seats.upperDeck || [])];
     
-    // Group seats by row and column for grid layout
-    const createSeatGrid = (seats) => {
-      if (seats.length === 0) return [];
-      
-      // Group seats by row
-      const seatsByRow = {};
-      seats.forEach(seat => {
-        const row = seat.row || 0;
-        if (!seatsByRow[row]) {
-          seatsByRow[row] = [];
-        }
-        seatsByRow[row].push(seat);
-      });
-      
-      // Sort rows and seats within rows
-      return Object.keys(seatsByRow)
-        .sort((a, b) => parseInt(a) - parseInt(b))
-        .map(rowKey => {
-          const rowSeats = seatsByRow[rowKey].sort((a, b) => 
-            (a.column || 0) - (b.column || 0)
-          );
-          return { row: rowKey, seats: rowSeats };
-        });
-    };
-    
-    const lowerGrid = createSeatGrid(lowerDeckSeats);
-    const upperGrid = createSeatGrid(upperDeckSeats);
+    if (allSeats.length === 0) {
+      return (
+        <View style={styles.seatsGrid}>
+          <Text style={{ textAlign: 'center', padding: 20, color: '#666' }}>
+            No seats available
+          </Text>
+        </View>
+      );
+    }
+
+    // Group seats by row for layout
+    const seatsByRow = {};
+    allSeats.forEach(seat => {
+      const row = seat.row || 0;
+      if (!seatsByRow[row]) {
+        seatsByRow[row] = [];
+      }
+      seatsByRow[row].push(seat);
+    });
+
+    // Sort rows and render
+    const sortedRows = Object.keys(seatsByRow).sort((a, b) => parseInt(a) - parseInt(b));
     
     return (
       <View style={styles.seatsGrid}>
-        {/* Lower Deck */}
-        {lowerGrid.map((rowData, index) => (
-          <View key={`lower-row-${rowData.row}`} style={styles.seatRow}>
-            <View style={styles.seatGroup}>
-              {rowData.seats.slice(0, 2).map(seat => {
-                const seatNumber = seat.seatNumber;
-                const state = seatStates[seatNumber] || 'available';
-                return renderSeat(seatNumber, state, seat);
-              })}
-            </View>
-            <View style={styles.aisle} />
-            <View style={styles.seatGroup}>
-              {rowData.seats.slice(2, 4).map(seat => {
-                const seatNumber = seat.seatNumber;
-                const state = seatStates[seatNumber] || 'available';
-                return renderSeat(seatNumber, state, seat);
-              })}
-            </View>
-          </View>
-        ))}
-        
-        {/* Upper Deck (if available) */}
-        {upperGrid.length > 0 && (
-          <View style={{ marginTop: 20 }}>
-            <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>Upper Deck</Text>
-            {upperGrid.map((rowData, index) => (
-              <View key={`upper-row-${rowData.row}`} style={styles.seatRow}>
-                <View style={styles.seatGroup}>
-                  {rowData.seats.slice(0, 2).map(seat => {
-                    const seatNumber = seat.seatNumber;
-                    const state = seatStates[seatNumber] || 'available';
-                    return renderSeat(seatNumber, state, seat);
-                  })}
-                </View>
-                <View style={styles.aisle} />
-                <View style={styles.seatGroup}>
-                  {rowData.seats.slice(2, 4).map(seat => {
-                    const seatNumber = seat.seatNumber;
-                    const state = seatStates[seatNumber] || 'available';
-                    return renderSeat(seatNumber, state, seat);
-                  })}
-                </View>
+        {sortedRows.map(rowKey => {
+          const rowSeats = seatsByRow[rowKey].sort((a, b) => (a.column || 0) - (b.column || 0));
+          
+          return (
+            <View key={`row-${rowKey}`} style={styles.seatRow}>
+              <View style={styles.seatGroup}>
+                {rowSeats.slice(0, 2).map(seat => {
+                  const state = seatStates[seat.id] || 'available';
+                  return renderSeat(seat, state);
+                })}
               </View>
-            ))}
-          </View>
-        )}
+              <View style={styles.aisle} />
+              <View style={styles.seatGroup}>
+                {rowSeats.slice(2, 4).map(seat => {
+                  const state = seatStates[seat.id] || 'available';
+                  return renderSeat(seat, state);
+                })}
+              </View>
+            </View>
+          );
+        })}
       </View>
     );
   };
@@ -438,8 +402,8 @@ const SeatSelectionScreen = ({ navigation, route }) => {
           {/* Steering Wheel / Driver Icon - Plain with transparent background */}
           <MaterialCommunityIcons name="steering" size={28} color="#2C2C2C" style={styles.steeringIcon} />
 
-          {/* Dynamic Seats Grid based on backend data */}
-          {renderDynamicSeatLayout()}
+          {/* Dynamic Seats Grid based on actual backend data */}
+          {renderDynamicSeats()}
         </View>
 
         {/* Bottom spacing for button */}
@@ -458,43 +422,18 @@ const SeatSelectionScreen = ({ navigation, route }) => {
               activeOpacity={isDisabled ? 1 : 0.8}
               disabled={isDisabled}
               onPress={() => {
-                // Check if seatMapping is properly loaded
-                if (!seatMapping || Object.keys(seatMapping).length === 0) {
-                  console.error('Seat mapping not loaded yet');
-                  Alert.alert('Loading Error', 'Seat data is still loading. Please wait and try again.');
-                  return;
-                }
-                
                 // Navigate to boarding points with API data
-                const selectedSeatNumbers = Object.keys(seatStates).filter(key => seatStates[key] === 'selected');
+                const selectedSeatIds = Object.keys(seatStates).filter(key => seatStates[key] === 'selected');
+                const selectedSeatObjects = selectedSeatIds.map(seatId => seatMapping[seatId]).filter(Boolean);
                 
-                // Validate that all selected seat numbers exist in mapping
-                const missingSeats = selectedSeatNumbers.filter(seatNumber => !seatMapping[seatNumber]);
-                if (missingSeats.length > 0) {
-                  console.error('Missing seats in mapping:', missingSeats);
-                  Alert.alert('Data Error', 'Some selected seats are not found in seat mapping. Please refresh and try again.');
-                  return;
-                }
-                
-                const selectedSeatObjects = selectedSeatNumbers.map(seatNumber => seatMapping[seatNumber]).filter(Boolean);
-                
-                // Double-check that we have the right number of selected seats
-                if (selectedSeatObjects.length !== selectedSeatNumbers.length) {
-                  console.error('Seat count mismatch:', {
-                    selectedNumbers: selectedSeatNumbers.length,
-                    selectedObjects: selectedSeatObjects.length
-                  });
-                  Alert.alert('Data Mismatch', 'Selected seat count does not match. Please try again.');
-                  return;
-                }
-                
-                console.log('Selected seat numbers:', selectedSeatNumbers);
-                console.log('Selected seat objects:', selectedSeatObjects);
-                console.log('Seat mapping:', seatMapping);
-                console.log('Seat states:', seatStates);
+                console.log('🎯 Selected seat IDs:', selectedSeatIds);
+                console.log('🎯 Selected seat objects:', selectedSeatObjects);
+                console.log('🎯 Seat mapping keys:', Object.keys(seatMapping));
+                console.log('🎯 Seat states:', seatStates);
                 
                 // Validate selection before navigation
                 if (selectedSeatObjects.length === 0) {
+                  console.error('❌ No valid seat objects found for selection');
                   Alert.alert('No Seats Selected', 'Please select at least one seat before continuing.');
                   return;
                 }
@@ -502,34 +441,16 @@ const SeatSelectionScreen = ({ navigation, route }) => {
                 // Ensure seat objects have required properties
                 const invalidSeats = selectedSeatObjects.filter(seat => !seat || !seat.id);
                 if (invalidSeats.length > 0) {
-                  console.error('Invalid seat objects found:', invalidSeats);
+                  console.error('❌ Invalid seat objects found:', invalidSeats);
                   Alert.alert('Seat Selection Error', 'Some seat data is invalid. Please try selecting seats again.');
                   return;
                 }
                 
-                console.log('=== SEATSELECTION NAVIGATION DEBUG ===');
-                console.log('selectedSeatNumbers:', selectedSeatNumbers);
-                console.log('seatMapping keys:', Object.keys(seatMapping));
-                console.log('selectedSeatObjects:', selectedSeatObjects);
-                console.log('busData exists:', !!busData);
-                console.log('busInfo exists:', !!busInfo);
-                console.log('Navigation params being passed:', {
-                  busData: !!busData,
-                  selectedSeats: selectedSeatObjects,
-                  busInfo: !!busInfo,
-                  boardingPoints: busInfo?.route?.boardingPoints || [],
-                  droppingPoints: busInfo?.route?.droppingPoints || [],
-                });
-                console.log('==========================================');
-                
-                // Store selectedSeats in AsyncStorage as backup
-                AsyncStorage.setItem('selectedSeatsBackup', JSON.stringify(selectedSeatObjects))
-                  .then(() => console.log('Seat data backed up to AsyncStorage'))
-                  .catch(err => console.warn('Failed to backup seat data:', err));
+                console.log('✅ Navigating to BoardingPoints with valid seats:', selectedSeatObjects.length);
                 
                 navigation.navigate('BoardingPoints', {
                   busData,
-                  selectedSeats: selectedSeatObjects, // Now contains full seat objects with IDs
+                  selectedSeats: selectedSeatObjects, // Contains full seat objects with IDs
                   busInfo: busInfo,
                   boardingPoints: busInfo?.route?.boardingPoints || [],
                   droppingPoints: busInfo?.route?.droppingPoints || [],

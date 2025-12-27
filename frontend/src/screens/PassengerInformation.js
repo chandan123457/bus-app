@@ -77,8 +77,22 @@ const PassengerInformation = ({ navigation, route }) => {
     }, []);
   }
 
-  // Passenger information state - initialize empty, will be populated when seats are available
-  const [passengers, setPassengers] = useState([]);
+  // Passenger information state - initialize with safe defaults based on selected seats
+  const [passengers, setPassengers] = useState(() => {
+    // Initialize with default passenger objects to prevent undefined errors
+    if (actualSelectedSeats && actualSelectedSeats.length > 0) {
+      return actualSelectedSeats.map((seat, index) => ({
+        name: '',
+        age: '',
+        gender: 'Male',
+        seatId: seat.id,
+        seatNumber: seat.seatNumber,
+        email: '',
+        phone: '',
+      }));
+    }
+    return [];
+  });
 
   // Contact details state
   const [contactDetails, setContactDetails] = useState({
@@ -86,27 +100,41 @@ const PassengerInformation = ({ navigation, route }) => {
     email: '',
   });
 
-  // Initialize passengers when actualSelectedSeats changes
+  // Update passengers when actualSelectedSeats changes (e.g., from AsyncStorage recovery)
   useEffect(() => {
     if (actualSelectedSeats && actualSelectedSeats.length > 0) {
-      const initialPassengers = actualSelectedSeats.map((seat, index) => ({
-        name: '',
-        age: '',
-        gender: 'Male',
-        seatId: seat.id, // Map passenger to seat ID
-        seatNumber: seat.seatNumber, // For display purposes
-        email: '', // Initialize email field
-        phone: '', // Initialize phone field  
-      }));
-      setPassengers(initialPassengers);
-      console.log('Passengers initialized for recovered seats:', initialPassengers);
+      // Only update if passengers array length doesn't match seats
+      if (passengers.length !== actualSelectedSeats.length) {
+        const initialPassengers = actualSelectedSeats.map((seat, index) => ({
+          name: passengers[index]?.name || '', // Preserve existing data if available
+          age: passengers[index]?.age || '',
+          gender: passengers[index]?.gender || 'Male',
+          seatId: seat.id,
+          seatNumber: seat.seatNumber,
+          email: passengers[index]?.email || '',
+          phone: passengers[index]?.phone || '',
+        }));
+        setPassengers(initialPassengers);
+        console.log('Passengers updated for seat changes:', initialPassengers);
+      }
     }
   }, [actualSelectedSeats]);
 
   console.log('Current passengers:', passengers);
   console.log('Current actualSelectedSeats:', actualSelectedSeats);
+  console.log('Passengers length:', passengers.length);
+  console.log('ActualSelectedSeats length:', actualSelectedSeats.length);
+
+  // Add safety check for rendering - only render if arrays are in sync
+  const shouldRenderPassengerForms = passengers.length > 0 && passengers.length === actualSelectedSeats.length;
 
   const updatePassenger = (index, field, value) => {
+    // Safety check to ensure passenger exists at index
+    if (!passengers[index]) {
+      console.warn(`Attempted to update passenger at index ${index}, but passenger doesn't exist`);
+      return;
+    }
+    
     const updatedPassengers = [...passengers];
     updatedPassengers[index][field] = value;
     setPassengers(updatedPassengers);
@@ -241,18 +269,26 @@ const PassengerInformation = ({ navigation, route }) => {
         <View style={styles.cardOverlapping}>
           <Text style={styles.cardTitle}>Passenger Information</Text>
           
-          {actualSelectedSeats.map((seat, index) => (
-            <View key={index} style={styles.passengerSection}>
-              <Text style={styles.passengerLabel}>
-                Passenger {index + 1} - Seat {seat.seatNumber || `Seat ${index + 1}`}
-              </Text>
+          {shouldRenderPassengerForms ? (
+            actualSelectedSeats.map((seat, index) => {
+              // Safety check: ensure passenger exists at this index
+              if (!passengers[index]) {
+                console.warn(`Passenger at index ${index} not found, skipping render`);
+                return null;
+              }
+              
+              return (
+              <View key={index} style={styles.passengerSection}>
+                <Text style={styles.passengerLabel}>
+                  Passenger {index + 1} - Seat {seat.seatNumber || `Seat ${index + 1}`}
+                </Text>
               
               {/* Full Name Input */}
               <TextInput
                 style={styles.input}
                 placeholder="Full Name"
                 placeholderTextColor="#9CA3AF"
-                value={passengers[index].name}
+                value={passengers[index]?.name || ''}
                 onChangeText={(text) => updatePassenger(index, 'name', text)}
               />
               
@@ -262,7 +298,7 @@ const PassengerInformation = ({ navigation, route }) => {
                 placeholder="Email Address (Required)"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="email-address"
-                value={passengers[index].email}
+                value={passengers[index]?.email || ''}
                 onChangeText={(text) => updatePassenger(index, 'email', text)}
               />
               
@@ -273,7 +309,7 @@ const PassengerInformation = ({ navigation, route }) => {
                   placeholder="Age"
                   placeholderTextColor="#9CA3AF"
                   keyboardType="numeric"
-                  value={passengers[index].age}
+                  value={passengers[index]?.age || ''}
                   onChangeText={(text) => updatePassenger(index, 'age', text)}
                 />
                 
@@ -285,7 +321,7 @@ const PassengerInformation = ({ navigation, route }) => {
                     activeOpacity={0.7}
                   >
                     <View style={styles.radioCircle}>
-                      {passengers[index].gender === 'Male' && (
+                      {passengers[index]?.gender === 'Male' && (
                         <View style={styles.radioCircleFilled} />
                       )}
                     </View>
@@ -298,7 +334,7 @@ const PassengerInformation = ({ navigation, route }) => {
                     activeOpacity={0.7}
                   >
                     <View style={styles.radioCircle}>
-                      {passengers[index].gender === 'Female' && (
+                      {passengers[index]?.gender === 'Female' && (
                         <View style={styles.radioCircleFilled} />
                       )}
                     </View>
@@ -307,7 +343,11 @@ const PassengerInformation = ({ navigation, route }) => {
                 </View>
               </View>
             </View>
-          ))}
+            );
+            })
+          ) : (
+            <Text style={styles.loadingText}>Loading passenger forms...</Text>
+          )}
         </View>
 
         {/* Contact Details Card */}
@@ -463,6 +503,13 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 16,
     textAlign: 'center', // Centered title
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingVertical: 20,
   },
 
   // Passenger Section

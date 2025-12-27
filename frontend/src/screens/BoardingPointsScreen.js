@@ -57,18 +57,31 @@ const BoardingPointsScreen = ({ navigation, route }) => {
     console.error('No selected seats found in BoardingPointsScreen!');
   }
 
-  // Sample boarding and dropping points - replace with actual API data
-  const boardingPoints = [
+  console.log('Current actualSelectedSeats:', actualSelectedSeats);
+
+  // Use actual boarding and dropping points from API data
+  const apiBoardingPoints = busInfo?.route?.boardingPoints || [];
+  const apiDroppingPoints = busInfo?.route?.droppingPoints || [];
+  
+  console.log('API boarding points:', apiBoardingPoints);
+  console.log('API dropping points:', apiDroppingPoints);
+  
+  // Fallback to hardcoded data if API data is not available
+  const fallbackBoardingPoints = [
     { id: '1', name: 'Central Bus Station', time: '06:00 AM', landmark: 'Near City Mall' },
     { id: '2', name: 'Metro Station Gate 3', time: '06:15 AM', landmark: 'Exit Gate 3' },
     { id: '3', name: 'Airport Terminal', time: '06:30 AM', landmark: 'Departure Gate' },
   ];
 
-  const droppingPoints = [
+  const fallbackDroppingPoints = [
     { id: '1', name: 'Downtown Terminal', time: '02:00 PM', landmark: 'Main Terminal' },
     { id: '2', name: 'Shopping Complex', time: '02:15 PM', landmark: 'Near Food Court' },
     { id: '3', name: 'Railway Station', time: '02:30 PM', landmark: 'Platform Entry' },
   ];
+
+  // Use API data if available, otherwise fallback to hardcoded data
+  const boardingPoints = apiBoardingPoints.length > 0 ? apiBoardingPoints : fallbackBoardingPoints;
+  const droppingPoints = apiDroppingPoints.length > 0 ? apiDroppingPoints : fallbackDroppingPoints;
 
   const handleContinue = () => {
     if (!selectedBoardingPoint || !selectedDroppingPoint) {
@@ -116,46 +129,54 @@ const BoardingPointsScreen = ({ navigation, route }) => {
     });
   };
 
-  const renderPointCard = (point, isSelected, onSelect, type) => (
-    <TouchableOpacity
-      key={point.id}
-      style={[
-        styles.pointCard,
-        isSelected && styles.selectedPointCard
-      ]}
-      onPress={() => onSelect(point)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.pointInfo}>
-        <Text style={[
-          styles.pointName,
-          isSelected && styles.selectedText
+  const renderPointCard = (point, isSelected, onSelect, type) => {
+    // Defensive check for point data
+    if (!point || !point.id) {
+      console.warn('Invalid point data:', point);
+      return null;
+    }
+
+    return (
+      <TouchableOpacity
+        key={point.id}
+        style={[
+          styles.pointCard,
+          isSelected && styles.selectedPointCard
+        ]}
+        onPress={() => onSelect(point)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.pointInfo}>
+          <Text style={[
+            styles.pointName,
+            isSelected && styles.selectedText
+          ]}>
+            {point.name || 'Unknown Location'}
+          </Text>
+          <Text style={[
+            styles.pointTime,
+            isSelected && styles.selectedSubText
+          ]}>
+            {point.time || 'Time TBD'}
+          </Text>
+          <Text style={[
+            styles.pointLandmark,
+            isSelected && styles.selectedSubText
+          ]}>
+            {point.landmark || point.address || 'No landmark available'}
+          </Text>
+        </View>
+        <View style={[
+          styles.selectionCircle,
+          isSelected && styles.selectedCircle
         ]}>
-          {point.name}
-        </Text>
-        <Text style={[
-          styles.pointTime,
-          isSelected && styles.selectedSubText
-        ]}>
-          {point.time}
-        </Text>
-        <Text style={[
-          styles.pointLandmark,
-          isSelected && styles.selectedSubText
-        ]}>
-          {point.landmark}
-        </Text>
-      </View>
-      <View style={[
-        styles.selectionCircle,
-        isSelected && styles.selectedCircle
-      ]}>
-        {isSelected && (
-          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+          {isSelected && (
+            <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.mainContainer}>
@@ -182,7 +203,7 @@ const BoardingPointsScreen = ({ navigation, route }) => {
             <View style={styles.headerContent}>
               <Text style={styles.headerTitle}>Boarding & Dropping Points</Text>
               <Text style={styles.headerSubtitle}>
-                {busData.operator} • {selectedSeats.length} seat{selectedSeats.length > 1 ? 's' : ''} selected
+                {busData?.operator || 'Bus Service'} • {actualSelectedSeats.length} seat{actualSelectedSeats.length !== 1 ? 's' : ''} selected
               </Text>
             </View>
           </View>
@@ -203,13 +224,21 @@ const BoardingPointsScreen = ({ navigation, route }) => {
               <Text style={styles.sectionTitle}>Select Boarding Point</Text>
             </View>
             
-            {boardingPoints.map(point => 
-              renderPointCard(
-                point,
-                selectedBoardingPoint?.id === point.id,
-                setSelectedBoardingPoint,
-                'boarding'
-              )
+            {boardingPoints.length > 0 ? (
+              boardingPoints
+                .filter(point => point && point.id) // Filter out invalid points
+                .map(point => 
+                  renderPointCard(
+                    point,
+                    selectedBoardingPoint?.id === point.id,
+                    setSelectedBoardingPoint,
+                    'boarding'
+                  )
+                )
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>No boarding points available</Text>
+              </View>
             )}
           </View>
 
@@ -220,13 +249,21 @@ const BoardingPointsScreen = ({ navigation, route }) => {
               <Text style={styles.sectionTitle}>Select Dropping Point</Text>
             </View>
             
-            {droppingPoints.map(point => 
-              renderPointCard(
-                point,
-                selectedDroppingPoint?.id === point.id,
-                setSelectedDroppingPoint,
-                'dropping'
-              )
+            {droppingPoints.length > 0 ? (
+              droppingPoints
+                .filter(point => point && point.id) // Filter out invalid points  
+                .map(point => 
+                  renderPointCard(
+                    point,
+                    selectedDroppingPoint?.id === point.id,
+                    setSelectedDroppingPoint,
+                    'dropping'
+                  )
+                )
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>No dropping points available</Text>
+              </View>
             )}
           </View>
         </ScrollView>
@@ -382,6 +419,16 @@ const styles = StyleSheet.create({
   selectedCircle: {
     backgroundColor: '#2D9B9B',
     borderColor: '#2D9B9B',
+  },
+  emptyState: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
   },
   bottomContainer: {
     position: 'absolute',
