@@ -1,124 +1,140 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
-  ImageBackground,
   TouchableOpacity,
   ScrollView,
   StatusBar,
   Dimensions,
-  Switch,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { userAPI } from '../services/api';
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Bottom Navigation Icons
 const HomeIconNav = ({ active = false }) => (
   <Svg width="26" height="26" viewBox="0 0 24 24">
-    <Path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}/>
+    <Path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'} />
   </Svg>
 );
 
 const BookingsIconNav = ({ active = false }) => (
   <Svg width="26" height="26" viewBox="0 0 24 24">
-    <Path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}/>
+    <Path
+      d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"
+      fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}
+    />
   </Svg>
 );
 
 const OffersIconNav = ({ active = false }) => (
   <Svg width="26" height="26" viewBox="0 0 24 24">
-    <Path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z" fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}/>
+    <Path
+      d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"
+      fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}
+    />
   </Svg>
 );
 
 const SupportIconNav = ({ active = false }) => (
   <Svg width="26" height="26" viewBox="0 0 24 24">
-    <Path d="M12 1c-4.97 0-9 4.03-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7c0-4.97-4.03-9-9-9z" fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}/>
+    <Path
+      d="M12 1c-4.97 0-9 4.03-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7c0-4.97-4.03-9-9-9z"
+      fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}
+    />
   </Svg>
 );
 
 const ProfileIconNav = ({ active = false }) => (
   <Svg width="26" height="26" viewBox="0 0 24 24">
-    <Path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}/>
+    <Path
+      d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+      fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}
+    />
   </Svg>
 );
 
+const formatDate = (value) => {
+  if (!value) {
+    return '—';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '—';
+  }
+  return parsed.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+};
+
+const formatCurrency = (amount = 0) => {
+  const safeAmount = Number(amount) || 0;
+  return `₹${safeAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+};
+
 const ProfileScreen = ({ navigation }) => {
-  const [name, setName] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
-  const [email, setEmail] = useState('');
-  const [age, setAge] = useState('');
-  const [gender, setGender] = useState('male');
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [language, setLanguage] = useState('English');
+  const [profile, setProfile] = useState(null);
+  const [stats, setStats] = useState({ totalBookings: 0, totalSpent: 0 });
   const [loading, setLoading] = useState(true);
-  const [userStats, setUserStats] = useState({ totalBookings: 0, totalSpent: 0 });
+  const [error, setError] = useState(null);
 
-  // Fetch user profile data on component mount
-  useEffect(() => {
-    fetchUserProfile();
-  }, []);
-
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
+    setError(null);
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const userData = await AsyncStorage.getItem('userData');
-      
+      const cachedUser = await AsyncStorage.getItem('userData');
+
+      if (cachedUser) {
+        try {
+          const parsed = JSON.parse(cachedUser);
+          setProfile(parsed);
+        } catch (parseError) {
+          console.warn('Failed to parse cached user data:', parseError);
+        }
+      }
+
       if (!token) {
-        Alert.alert('Not Logged In', 'Please sign in to view your profile', [
-          { text: 'OK', onPress: () => navigation.navigate('SignIn') }
-        ]);
+        setLoading(false);
+        setError('Please sign in to view your profile.');
+        navigation.navigate('SignIn');
         return;
       }
 
-      // If we have cached user data, show it immediately
-      if (userData) {
-        const user = JSON.parse(userData);
-        setName(user.name || '');
-        setEmail(user.email || '');
-        setMobileNumber(user.phone || '');
-      }
-
-      // Fetch fresh profile data from API
       const result = await userAPI.getProfile(token);
-      
+
       if (result.success) {
-        const profileData = result.data.user;
-        const stats = result.data.statistics;
-        
-        // Update state with fresh data
-        setName(profileData.name || '');
-        setEmail(profileData.email || '');
-        setMobileNumber(profileData.phone || '');
-        setUserStats({
-          totalBookings: stats?.totalBookings || 0,
-          totalSpent: stats?.totalSpent || 0
+        setProfile(result.data.user);
+        setStats({
+          totalBookings: result.data.statistics?.totalBookings || 0,
+          totalSpent: result.data.statistics?.totalSpent || 0,
         });
-        
-        // Update cached user data
-        await AsyncStorage.setItem('userData', JSON.stringify(profileData));
+        await AsyncStorage.setItem('userData', JSON.stringify(result.data.user));
       } else {
-        // If API fails but we have cached data, show cached data
-        if (!userData) {
-          Alert.alert('Error', result.error || 'Failed to load profile data');
-        }
+        setError(result.error || 'Unable to load profile right now.');
       }
-    } catch (error) {
-      console.error('Profile fetch error:', error);
-      Alert.alert('Error', 'Failed to load profile data');
+    } catch (fetchError) {
+      console.error('Profile fetch error:', fetchError);
+      setError('Unable to load profile right now.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserProfile();
+    }, [fetchUserProfile])
+  );
 
   const handleBottomNav = (tab) => {
     if (tab === 'Home') {
@@ -129,291 +145,260 @@ const ProfileScreen = ({ navigation }) => {
       navigation.navigate('Offers');
     } else if (tab === 'Support') {
       navigation.navigate('HelpSupport');
-    } else if (tab === 'Profile') {
-      // Already on Profile screen
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <StatusBar style="light" translucent backgroundColor="transparent" />
-      
-      {/* Top Background & Header */}
-      <View style={styles.topImageSection}>
-        <ImageBackground
-          source={require('../../assets/landing-background.jpg')}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-        >
-          <View style={styles.overlay} />
-          
-          <SafeAreaView edges={['top']} style={styles.safeHeader}>
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>Profile</Text>
-            </View>
-          </SafeAreaView>
-        </ImageBackground>
-      </View>
+  const handleNotifications = () => {
+    Alert.alert('Notifications', 'Mobile notifications are coming soon.');
+  };
 
-      {/* Profile Avatar */}
-      <View style={styles.avatarContainer}>
-        <View style={styles.avatarWrapper}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.avatar}
-          />
+  const handleLogout = useCallback(() => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Stay Logged In', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await AsyncStorage.multiRemove(['authToken', 'userData']);
+          navigation.reset({ index: 0, routes: [{ name: 'SignIn' }] });
+        },
+      },
+    ]);
+  }, [navigation]);
+
+  const travelerName = profile?.name || 'Traveler';
+  const avatarInitial = travelerName.charAt(0).toUpperCase();
+  const isVerified = Boolean(profile?.verified);
+  const verificationLabel = isVerified ? 'Verified' : 'Pending';
+  const verificationIcon = isVerified ? 'check-decagram' : 'shield-alert';
+
+  const accountDetails = [
+    {
+      id: 'name',
+      label: 'Full Name',
+      value: travelerName,
+      icon: 'account-outline',
+    },
+    {
+      id: 'email',
+      label: 'Email Address',
+      value: profile?.email || 'Add your email address',
+      icon: 'email-check-outline',
+    },
+    {
+      id: 'phone',
+      label: 'Phone Number',
+      value: profile?.phone || 'Add your phone number',
+      icon: 'phone-outline',
+    },
+    {
+      id: 'memberSince',
+      label: 'Member Since',
+      value: formatDate(profile?.createdAt),
+      icon: 'calendar-month-outline',
+    },
+  ];
+
+  const quickActions = [
+    {
+      id: 'bookings',
+      label: 'View Bookings',
+      icon: 'ticket-confirmation-outline',
+      onPress: () => navigation.navigate('Bookings'),
+    },
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: 'bell-outline',
+      onPress: handleNotifications,
+    },
+    {
+      id: 'logout',
+      label: 'Logout',
+      icon: 'logout',
+      onPress: handleLogout,
+      destructive: true,
+    },
+  ];
+
+  const renderAccountDetail = (detail) => (
+    <View key={detail.id} style={styles.infoRow}>
+      <View style={styles.infoLabelGroup}>
+        <MaterialCommunityIcons name={detail.icon} size={20} color="#6366F1" />
+        <View>
+          <Text style={styles.infoLabel}>{detail.label}</Text>
+          <Text style={styles.infoValue}>{detail.value}</Text>
         </View>
       </View>
+    </View>
+  );
 
-      {/* Content Area */}
-      <View style={styles.contentArea}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+  const renderQuickAction = (action) => (
+    <TouchableOpacity
+      key={action.id}
+      style={styles.quickActionRow}
+      onPress={action.onPress}
+      activeOpacity={0.8}
+    >
+      <View style={styles.quickActionLeft}>
+        <View
+          style={[
+            styles.quickActionIcon,
+            action.destructive && styles.quickActionIconDanger,
+          ]}
         >
-          {/* Loading State */}
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading profile...</Text>
+          <MaterialCommunityIcons
+            name={action.icon}
+            size={18}
+            color={action.destructive ? '#FFFFFF' : '#4F46E5'}
+          />
+        </View>
+        <Text
+          style={[
+            styles.quickActionText,
+            action.destructive && styles.quickActionDangerText,
+          ]}
+        >
+          {action.label}
+        </Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={22} color="#94A3B8" />
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+      <View style={styles.heroSection}>
+        <SafeAreaView edges={['top']} style={styles.heroInner}>
+          <View style={styles.heroBrandRow}>
+            <Image source={require('../../assets/logo.png')} style={styles.brandLogo} />
+            <Text style={styles.brandTagline}>Your Journey Partner</Text>
+          </View>
+          <Text style={styles.heroTitle}>My Profile</Text>
+          <Text style={styles.heroSubtitle}>Manage your account information</Text>
+        </SafeAreaView>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {error && (
+          <View style={styles.errorBanner}>
+            <MaterialCommunityIcons name="alert-circle" size={20} color="#B91C1C" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={fetchUserProfile} style={styles.retryButton}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.avatarCard}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarLetter}>{avatarInitial}</Text>
+          </View>
+          <View style={styles.avatarMeta}>
+            <Text style={styles.avatarName}>{travelerName}</Text>
+            <Text style={styles.avatarEmail}>{profile?.email || 'Add your email'}</Text>
+          </View>
+          <View style={[
+            styles.verificationPill,
+            isVerified ? styles.verificationPillSuccess : styles.verificationPillWarning,
+          ]}>
+            <MaterialCommunityIcons
+              name={verificationIcon}
+              size={16}
+              color={isVerified ? '#10B981' : '#F97316'}
+            />
+            <Text
+              style={[
+                styles.verificationText,
+                isVerified ? styles.verificationSuccessText : styles.verificationWarningText,
+              ]}
+            >
+              {verificationLabel}
+            </Text>
+          </View>
+        </View>
+
+        {loading && !profile ? (
+          <View style={styles.loaderWrapper}>
+            <ActivityIndicator size="small" color="#4F46E5" />
+            <Text style={styles.loaderText}>Fetching profile...</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>Account Information</Text>
+                <TouchableOpacity style={styles.editLink} activeOpacity={0.7}>
+                  <MaterialCommunityIcons name="pencil-outline" size={16} color="#6366F1" />
+                  <Text style={styles.editText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.infoGrid}>{accountDetails.map(renderAccountDetail)}</View>
             </View>
-          ) : (
-            <>
-              {/* User Statistics Card */}
-              <View style={styles.statsCard}>
-                <Text style={styles.statsTitle}>Your Travel Stats</Text>
+
+            <View style={styles.cardGrid}>
+              <View style={[styles.card, styles.quickActionsCard]}>
+                <Text style={styles.cardTitle}>Quick Actions</Text>
+                <View style={styles.quickActionDivider} />
+                {quickActions.map(renderQuickAction)}
+              </View>
+
+              <View style={[styles.card, styles.statusCard]}>
+                <Text style={[styles.cardTitle, styles.statusCardTitle]}>Account Status</Text>
+                <View style={styles.statusBadge}>
+                  <MaterialCommunityIcons
+                    name={verificationIcon}
+                    size={18}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.statusBadgeText}>{verificationLabel}</Text>
+                </View>
+                <View style={styles.statusMetaRow}>
+                  <Text style={styles.statusLabel}>Account Type</Text>
+                  <Text style={styles.statusValue}>Traveler</Text>
+                </View>
+                <View style={styles.statusMetaRow}>
+                  <Text style={styles.statusLabel}>Member Since</Text>
+                  <Text style={styles.statusValue}>{formatDate(profile?.createdAt)}</Text>
+                </View>
                 <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>{userStats.totalBookings}</Text>
-                    <Text style={styles.statLabel}>Total Bookings</Text>
+                  <View style={styles.statsChip}>
+                    <Text style={styles.statsChipNumber}>{stats.totalBookings}</Text>
+                    <Text style={styles.statsChipLabel}>Total Bookings</Text>
                   </View>
-                  <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>₹{userStats.totalSpent.toFixed(0)}</Text>
-                    <Text style={styles.statLabel}>Total Spent</Text>
+                  <View style={styles.statsChip}>
+                    <Text style={styles.statsChipNumber}>{formatCurrency(stats.totalSpent)}</Text>
+                    <Text style={styles.statsChipLabel}>Total Spent</Text>
                   </View>
                 </View>
               </View>
-
-              {/* Profile Section Header */}
-              <View style={styles.profileSectionHeader}>
-                <Text style={styles.profileSectionTitle}>Profile Section</Text>
-                <TouchableOpacity style={styles.editButton} activeOpacity={0.7}>
-                  <MaterialCommunityIcons name="account-edit" size={18} color="#FFFFFF" />
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Profile Details Form */}
-              <View style={styles.formSection}>
-            {/* Name */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Name</Text>
-              <TextInput
-                style={styles.inputField}
-                value={name}
-                onChangeText={setName}
-                placeholder="Enter your name"
-                placeholderTextColor="#9CA3AF"
-              />
             </View>
+          </>
+        )}
+      </ScrollView>
 
-            {/* Mobile Number */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Mobile Number</Text>
-              <TextInput
-                style={styles.inputField}
-                value={mobileNumber}
-                onChangeText={setMobileNumber}
-                placeholder="Enter mobile number"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            {/* Email */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput
-                style={styles.inputField}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Enter your email"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          {/* Age & Gender Row */}
-          <View style={styles.ageGenderRow}>
-            {/* Age */}
-            <View style={styles.ageContainer}>
-              <Text style={styles.inputLabel}>Age</Text>
-              <TextInput
-                style={styles.ageInput}
-                value={age}
-                onChangeText={setAge}
-                placeholder="Age"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="numeric"
-              />
-            </View>
-
-            {/* Gender */}
-            <View style={styles.genderContainer}>
-              <Text style={styles.inputLabel}>Gender</Text>
-              <View style={styles.genderOptions}>
-                <TouchableOpacity
-                  style={styles.genderOption}
-                  onPress={() => setGender('male')}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name="gender-male"
-                    size={24}
-                    color={gender === 'male' ? '#3B82F6' : '#9CA3AF'}
-                  />
-                  <View style={[
-                    styles.genderCircle,
-                    gender === 'male' && styles.genderCircleSelected
-                  ]}>
-                    {gender === 'male' && <View style={styles.genderCircleInner} />}
-                  </View>
-                  <Text style={styles.genderText}>Male</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.genderOption}
-                  onPress={() => setGender('female')}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name="gender-female"
-                    size={24}
-                    color={gender === 'female' ? '#3B82F6' : '#9CA3AF'}
-                  />
-                  <View style={[
-                    styles.genderCircle,
-                    gender === 'female' && styles.genderCircleSelected
-                  ]}>
-                    {gender === 'female' && <View style={styles.genderCircleInner} />}
-                  </View>
-                  <Text style={styles.genderText}>Female</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-          {/* General Settings Section */}
-          <View style={styles.settingsSection}>
-            <Text style={styles.sectionTitle}>General Settings</Text>
-            
-            {/* Notifications */}
-            <View style={styles.settingCard}>
-              <View style={styles.settingLeft}>
-                <MaterialCommunityIcons name="bell" size={24} color="#3B82F6" />
-                <Text style={styles.settingText}>Notifications</Text>
-              </View>
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
-                trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-
-            {/* Language */}
-            <TouchableOpacity style={styles.settingCard} activeOpacity={0.7}>
-              <View style={styles.settingLeft}>
-                <MaterialCommunityIcons name="web" size={24} color="#3B82F6" />
-                <Text style={styles.settingText}>Language</Text>
-              </View>
-              <View style={styles.settingRight}>
-                <Text style={styles.settingValue}>{language}</Text>
-                <MaterialCommunityIcons name="chevron-right" size={24} color="#9CA3AF" />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Official Documents Section */}
-          <View style={styles.documentsSection}>
-            <Text style={styles.sectionTitle}>Official Documents</Text>
-            
-            {/* Terms & Conditions */}
-            <TouchableOpacity style={styles.documentCard} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="file-document" size={24} color="#3B82F6" />
-              <Text style={styles.documentText}>Terms & Conditions</Text>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#9CA3AF" />
-            </TouchableOpacity>
-
-            {/* Privacy & Security */}
-            <TouchableOpacity style={[styles.documentCard, styles.lastDocumentCard]} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="shield-lock" size={24} color="#3B82F6" />
-              <Text style={styles.documentText}>Privacy & Security</Text>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#9CA3AF" />
-            </TouchableOpacity>
-          </View>
-
-          {/* About Us */}
-          <View style={styles.aboutSection}>
-            <TouchableOpacity style={styles.documentCard} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="information" size={24} color="#3B82F6" />
-              <Text style={styles.documentText}>About Us</Text>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#9CA3AF" />
-            </TouchableOpacity>
-          </View>
-            </>
-          )}
-        </ScrollView>
-      </View>
-
-      {/* Bottom Navigation Bar */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleBottomNav('Home')}
-          activeOpacity={0.7}
-        >
-          <HomeIconNav active={false} />
+        <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Home')} activeOpacity={0.7}>
+          <HomeIconNav />
           <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleBottomNav('Bookings')}
-          activeOpacity={0.7}
-        >
-          <BookingsIconNav active={false} />
+        <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Bookings')} activeOpacity={0.7}>
+          <BookingsIconNav />
           <Text style={styles.navLabel}>Bookings</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleBottomNav('Offers')}
-          activeOpacity={0.7}
-        >
-          <OffersIconNav active={false} />
+        <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Offers')} activeOpacity={0.7}>
+          <OffersIconNav />
           <Text style={styles.navLabel}>Offers</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleBottomNav('Support')}
-          activeOpacity={0.7}
-        >
-          <SupportIconNav active={false} />
+        <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Support')} activeOpacity={0.7}>
+          <SupportIconNav />
           <Text style={styles.navLabel}>Support</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleBottomNav('Profile')}
-          activeOpacity={0.7}
-        >
-          <ProfileIconNav active={true} />
-          <Text style={[styles.navLabel, styles.navLabelActive]}>Profile</Text>
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.7}>
+          <ProfileIconNav active />
+          <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -423,362 +408,317 @@ const ProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB', // Light off-white background
+    backgroundColor: '#F8FAFC',
   },
-  
-  // Top Image Section
-  topImageSection: {
-    height: SCREEN_HEIGHT * 0.18,
-    width: '100%',
+  heroSection: {
+    backgroundColor: '#4F46E5',
+    paddingBottom: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
+  heroInner: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Soft teal overlay
-  },
-  safeHeader: {
-    flex: 1,
-  },
-  
-  // Header
-  header: {
+  heroBrandRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 16,
-    paddingBottom: 16,
+    gap: 8,
   },
-  headerTitle: {
+  brandLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  brandTagline: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+  },
+  heroTitle: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600', // Semi-bold
-    letterSpacing: 0.3,
+    fontSize: 28,
+    fontWeight: '700',
+    marginTop: 18,
   },
-
-  // Profile Avatar
-  avatarContainer: {
-    alignItems: 'center',
-    marginTop: -50, // Overlap with background
-    zIndex: 10,
-  },
-  avatarWrapper: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#FFFFFF',
-    padding: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 46,
-  },
-
-  // Content Area
-  contentArea: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    marginTop: 5,
-  },
-  scrollView: {
-    flex: 1,
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 6,
+    fontSize: 14,
   },
   scrollContent: {
-    padding: 16,
-    paddingTop: 60, // Space for avatar
-    paddingBottom: 100, // Space for bottom navigation
-  },
-
-  // Profile Section Header
-  profileSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  profileSectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
-  },
-  editButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-
-  // Form Section
-  formSection: {
-    marginBottom: 24,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  inputField: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#1F2937',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-
-  // Age & Gender Row
-  ageGenderRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 24,
-  },
-  ageContainer: {
-    flex: 1,
-  },
-  ageInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#1F2937',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  genderContainer: {
-    flex: 1,
-  },
-  genderOptions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  genderOption: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  genderCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  genderCircleSelected: {
-    borderColor: '#3B82F6',
-  },
-  genderCircleInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#3B82F6',
-  },
-  genderText: {
-    fontSize: 12,
-    color: '#1F2937',
-    fontWeight: '400',
-  },
-
-  // Settings Section
-  settingsSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 16,
-  },
-  settingCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  settingText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1F2937',
-  },
-  settingRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  settingValue: {
-    fontSize: 15,
-    color: '#6B7280',
-    fontWeight: '400',
-  },
-
-  // Documents Section
-  documentsSection: {
-    marginBottom: 0,
-  },
-  documentCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  lastDocumentCard: {
-    marginBottom: 12, // Equal gap between Privacy & Security and About Us
-  },
-  documentText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginLeft: 12,
-  },
-
-  // About Section
-  aboutSection: {
-    marginBottom: 24,
-  },
-
-  // Bottom Navigation
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    backgroundColor: '#2C5F6F',
-    paddingTop: 10,
-    paddingBottom: 20,
-    height: 70,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navLabel: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginTop: 4,
-    fontWeight: '400',
-  },
-  navLabelActive: {
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
-
-  // Loading State
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-  },
-  loadingText: {
-    color: '#6B7280',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-
-  // Statistics Card
-  statsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginTop: 10,
-    marginBottom: 20,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    paddingBottom: 120,
+    gap: 16,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    flex: 1,
+    color: '#7F1D1D',
+    fontSize: 13,
+  },
+  retryButton: {
+    backgroundColor: '#B91C1C',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  avatarCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  avatarCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  avatarLetter: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  avatarMeta: {
+    flex: 1,
+  },
+  avatarName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  avatarEmail: {
+    color: '#64748B',
+    marginTop: 4,
+  },
+  verificationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  verificationPillSuccess: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  verificationPillWarning: {
+    backgroundColor: 'rgba(249, 115, 22, 0.15)',
+  },
+  verificationText: {
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  verificationSuccessText: {
+    color: '#047857',
+  },
+  verificationWarningText: {
+    color: '#C2410C',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
     elevation: 3,
   },
-  statsTitle: {
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  cardTitle: {
     fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  statusCardTitle: {
+    color: '#FFFFFF',
+  },
+  editLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  editText: {
+    color: '#6366F1',
     fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 15,
-    textAlign: 'center',
+  },
+  infoGrid: {
+    gap: 16,
+  },
+  infoRow: {
+    paddingVertical: 4,
+  },
+  infoLabelGroup: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  infoLabel: {
+    color: '#94A3B8',
+    fontSize: 12,
+    textTransform: 'uppercase',
+  },
+  infoValue: {
+    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  cardGrid: {
+    flexDirection: SCREEN_WIDTH > 700 ? 'row' : 'column',
+    gap: 16,
+  },
+  quickActionsCard: {
+    flex: 1,
+  },
+  quickActionDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 12,
+  },
+  quickActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  quickActionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  quickActionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionIconDanger: {
+    backgroundColor: '#FCA5A5',
+  },
+  quickActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  quickActionDangerText: {
+    color: '#B91C1C',
+  },
+  statusCard: {
+    flex: SCREEN_WIDTH > 700 ? 0.8 : 1,
+    backgroundColor: '#1E1B4B',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#4338CA',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    alignSelf: 'flex-start',
+    marginVertical: 12,
+  },
+  statusBadgeText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  statusMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  statusLabel: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+  },
+  statusValue: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 18,
+    gap: 12,
   },
-  statItem: {
+  statsChip: {
     flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    padding: 12,
+    borderRadius: 16,
+  },
+  statsChipNumber: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  statsChipLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 4,
+    fontSize: 12,
+  },
+  loaderWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 32,
+  },
+  loaderText: {
+    color: '#475569',
+  },
+  bottomNav: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 14,
+    backgroundColor: '#1E293B',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  navItem: {
     alignItems: 'center',
   },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#3B82F6',
-    marginBottom: 5,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 20,
+  navLabel: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    marginTop: 4,
   },
 });
 
 export default ProfileScreen;
-

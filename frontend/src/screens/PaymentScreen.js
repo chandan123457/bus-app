@@ -48,6 +48,43 @@ const checkPaymentEnvironment = () => {
 };
 
 const PaymentScreen = ({ navigation, route }) => {
+  const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
+
+  const getCachedUserEmail = async () => {
+    try {
+      const cachedUser = await AsyncStorage.getItem('userData');
+      if (!cachedUser) return null;
+      const parsed = JSON.parse(cachedUser);
+      return typeof parsed?.email === 'string' ? parsed.email : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getEmailStatusNote = async () => {
+    const email = await getCachedUserEmail();
+    if (!email) return '';
+    const normalized = email.trim().toLowerCase();
+    if (normalized.endsWith('@gmail.com')) {
+      return `\n\nTicket will be emailed to: ${email}`;
+    }
+    return `\n\nTicket will be emailed to your registered email: ${email}`;
+  };
+
+  const confirmBookingForPayment = async (paymentId, token) => {
+    const confirmResponse = await api.confirmPayment({ paymentId }, token);
+    if (!confirmResponse?.success) {
+      throw new Error(confirmResponse?.error || 'Booking confirmation failed');
+    }
+
+    const data = confirmResponse.data;
+    if (!data || !isNonEmptyString(data.bookingGroupId)) {
+      throw new Error('Booking confirmation returned an unexpected response');
+    }
+
+    return data;
+  };
+
   // Demo Razorpay configuration - Using the same secret as backend
   const DEMO_RAZORPAY_KEY_SECRET = 'lVO33r15GL7bZyt92KjSvO41';
 
@@ -497,9 +534,12 @@ const PaymentScreen = ({ navigation, route }) => {
       console.log('📋 Payment verification response:', verificationResponse);
       
       if (verificationResponse.success) {
+        const confirmed = await confirmBookingForPayment(paymentData.paymentId, token);
+        const emailNote = await getEmailStatusNote();
+
         Alert.alert(
           'Payment Successful! ✅',
-          `Your booking has been confirmed!\n\nPayment ID: ${razorpayResponse.razorpay_payment_id}`,
+          `Your booking has been confirmed!\n\nBooking Group ID: ${confirmed.bookingGroupId}${emailNote}`,
           [
             {
               text: 'View My Bookings',
@@ -581,9 +621,12 @@ const PaymentScreen = ({ navigation, route }) => {
       console.log('📋 Payment verification response:', verificationResponse);
       
       if (verificationResponse.success) {
+        const confirmed = await confirmBookingForPayment(paymentData.paymentId, token);
+        const emailNote = await getEmailStatusNote();
+
         Alert.alert(
           'Payment Successful! ✅',
-          'Your ticket has been booked successfully!',
+          `Your booking has been confirmed!\n\nBooking Group ID: ${confirmed.bookingGroupId}${emailNote}`,
           [
             {
               text: 'View My Bookings',
@@ -886,26 +929,54 @@ const PaymentScreen = ({ navigation, route }) => {
       const verificationResponse = await api.verifyPayment(verificationData, showWebView.token);
       console.log('🔵 Verification response:', verificationResponse);
 
+      if (verificationResponse.success) {
+        try {
+          const paymentIdToConfirm = showWebView.paymentData?.paymentId || paymentIdFromUrl;
+          const confirmed = await confirmBookingForPayment(paymentIdToConfirm, showWebView.token);
+          const emailNote = await getEmailStatusNote();
+
+          // Close WebView after confirmation
+          setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+          setPaymentLoading(false);
+          setDebugMessage(null);
+
+          Alert.alert(
+            'Payment Successful! ✅',
+            `Your booking has been confirmed!\n\nBooking Group ID: ${confirmed.bookingGroupId}${emailNote}`,
+            [{
+              text: 'View My Bookings',
+              onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Bookings' }] })
+            }]
+          );
+          return;
+        } catch (confirmError) {
+          console.error('❌ Booking confirmation failed after eSewa verification:', confirmError);
+
+          // Close WebView even if confirm fails
+          setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+          setPaymentLoading(false);
+          setDebugMessage(`Confirmation failed: ${confirmError.message}`);
+
+          Alert.alert(
+            'Booking Confirmation Failed',
+            confirmError.message || 'Payment verified but booking confirmation failed. Please contact support.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+      }
+
       // Close WebView after verification
       setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
       setPaymentLoading(false);
 
-      if (verificationResponse.success) {
-        setDebugMessage(null);
-        Alert.alert(
-          'Payment Successful! ✅',
-          `Your eSewa payment was successful!\n\nTransaction ID: ${transactionCode || 'N/A'}\n\nYour booking has been confirmed.`,
-          [{ text: 'View My Bookings', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Bookings' }] }) }]
-        );
-      } else {
-        // Verification failed - show error, don't navigate to bookings
-        setDebugMessage(`Verification failed: ${JSON.stringify(verificationResponse)}`);
-        Alert.alert(
-          'Verification Failed',
-          verificationResponse.errorMessage || 'Payment verification failed. Please contact support.',
-          [{ text: 'OK' }]
-        );
-      }
+      // Verification failed - show error, don't navigate to bookings
+      setDebugMessage(`Verification failed: ${JSON.stringify(verificationResponse)}`);
+      Alert.alert(
+        'Verification Failed',
+        verificationResponse.error || 'Payment verification failed. Please contact support.',
+        [{ text: 'OK' }]
+      );
     } catch (error) {
       console.error('❌ Error handling success:', error);
       setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });

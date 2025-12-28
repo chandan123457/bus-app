@@ -588,5 +588,41 @@ api.verifyPayment = async (verificationData, token) => {
   }
 };
 
+api.confirmPayment = async (confirmData, token) => {
+  try {
+    console.log('Confirming booking for payment:', { paymentId: confirmData.paymentId });
+
+    const response = await api.post(API_ENDPOINTS.PAYMENT_CONFIRM, confirmData, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log('Payment confirmation success:', {
+      status: response.status,
+      bookingGroupId: response.data?.bookingGroupId,
+    });
+
+    return {
+      success: true,
+      data: response.data,
+      message: response.data.message || 'Booking confirmed successfully',
+    };
+  } catch (error) {
+    console.error('Payment confirmation error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+
+    return {
+      success: false,
+      error: error.response?.data?.errorMessage || error.message || 'Failed to confirm booking',
+      status: error.response?.status,
+    };
+  }
+};
+
 export default api;
 
