@@ -247,6 +247,108 @@ export const userAPI = {
       };
     }
   },
+
+  /**
+   * Fetch bookings for the current user
+   * @param {Object} filters - { status, upcoming, page, limit }
+   * @param {string} token - JWT token
+   * @returns {Promise} API response
+   */
+  getBookings: async (filters = {}, token) => {
+    if (!token) {
+      return {
+        success: false,
+        error: 'Authentication required',
+        status: 401,
+      };
+    }
+
+    const params = {
+      page: filters.page ?? 1,
+      limit: filters.limit ?? 25,
+    };
+
+    if (filters.status) {
+      params.status = filters.status;
+    }
+
+    if (typeof filters.upcoming !== 'undefined') {
+      params.upcoming = String(filters.upcoming);
+    }
+
+    try {
+      const response = await api.get(API_ENDPOINTS.MY_BOOKINGS, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params,
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        message: response.data.message || 'Bookings fetched successfully',
+      };
+    } catch (error) {
+      console.error('My bookings fetch error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Failed to fetch bookings',
+        status: error.response?.status,
+      };
+    }
+  },
+
+  /**
+   * Cancel a booking group
+   * @param {string} bookingGroupId
+   * @param {string} token
+   */
+  cancelTicket: async (bookingGroupId, token) => {
+    if (!token) {
+      return {
+        success: false,
+        error: 'Authentication required',
+        status: 401,
+      };
+    }
+
+    try {
+      const response = await api.post(
+        API_ENDPOINTS.CANCEL_TICKET,
+        { bookingGroupId },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return {
+        success: true,
+        data: response.data,
+        message: response.data.message || 'Booking cancelled successfully',
+      };
+    } catch (error) {
+      console.error('Cancel ticket error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Failed to cancel booking',
+        status: error.response?.status,
+      };
+    }
+  },
 };
 
 /**

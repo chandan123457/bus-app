@@ -1,171 +1,482 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ImageBackground,
   TouchableOpacity,
-  ScrollView,
   StatusBar,
   Image,
   Dimensions,
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import API_BASE_URL, { API_ENDPOINTS } from '../config/api';
+import { userAPI } from '../services/api';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const tabs = ['Active', 'Completed', 'Cancelled'];
+
+const STATUS_META = {
+  CONFIRMED: { label: 'Confirmed', bg: '#DCFCE7', color: '#166534' },
+  PENDING: { label: 'Pending', bg: '#FEF3C7', color: '#92400E' },
+  CANCELLED: { label: 'Cancelled', bg: '#FEE2E2', color: '#B91C1C' },
+  REFUNDED: { label: 'Refunded', bg: '#DBEAFE', color: '#1D4ED8' },
+  COMPLETED: { label: 'Completed', bg: '#E0E7FF', color: '#3730A3' },
+};
+
+const parseTripDate = (tripDate) => {
+  if (!tripDate) return null;
+  const safeValue = tripDate.includes('T') ? tripDate : `${tripDate}T00:00:00`;
+  const parsed = new Date(safeValue);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const parseDateValue = (value, fallbackDate) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed;
+  }
+  if (typeof value === 'string' && fallbackDate) {
+    const [hours, minutes] = value.split(':').map((part) => parseInt(part, 10));
+    if (!Number.isNaN(hours)) {
+      const derived = new Date(fallbackDate);
+      derived.setHours(hours, Number.isNaN(minutes) ? 0 : minutes, 0, 0);
+      return derived;
+    }
+  }
+  return null;
+};
+
+const formatDateLabel = (date) => {
+  if (!date) return '--';
+  return date.toLocaleDateString('en-IN', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
+
+const formatTimeLabel = (date) => {
+  if (!date) return '--';
+  return date.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+const formatDuration = (start, end) => {
+  if (!start || !end) return null;
+  const diffMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+  if (!diffMinutes) return null;
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+  if (!hours) return `${minutes}m`;
+  if (!minutes) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+};
+
+const formatCurrency = (amount, currency = 'INR') => {
+  const safeAmount = Number(amount) || 0;
+  const formatted = safeAmount.toLocaleString('en-IN');
+  if (currency === 'NPR') {
+    return `NPR ${formatted}`;
+  }
+  return `₹ ${formatted}`;
+};
+
+const getStatusMeta = (booking) => {
+  if (!booking) return STATUS_META.CONFIRMED;
+  if (booking.status === 'CANCELLED') return STATUS_META.CANCELLED;
+  if (booking.status === 'REFUNDED') return STATUS_META.REFUNDED;
+  if (booking.trip?.tripStatus === 'COMPLETED') return STATUS_META.COMPLETED;
+  if (booking.status === 'PENDING') return STATUS_META.PENDING;
+  return STATUS_META.CONFIRMED;
+};
+
+const getSeatLabel = (booking) => {
+  if (!booking?.seats?.length) return 'Seat details NA';
+  return booking.seats.map((seat) => seat.seatNumber).join(', ');
+};
+
+const canCancelBooking = (booking, departureDateTime) => {
+  if (!booking) return false;
+  if (booking.status !== 'CONFIRMED') return false;
+  const tripStatus = booking.trip?.tripStatus;
+  if (!tripStatus || ['COMPLETED', 'CANCELLED', 'ONGOING'].includes(tripStatus)) {
+    return false;
+  }
+  if (!departureDateTime) {
+    return true;
+  }
+  const hoursUntilDeparture = (departureDateTime.getTime() - Date.now()) / 3600000;
+  return hoursUntilDeparture > 2;
+};
+
+const buildDownloadUrl = (bookingGroupId) =>
+  `${API_BASE_URL}${API_ENDPOINTS.DOWNLOAD_TICKET}/${bookingGroupId}`;
 
 const BookingsScreen = ({ navigation }) => {
   const [selectedTab, setSelectedTab] = useState('Active');
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
-  // Sample booking data
-  const bookings = {
-    Active: [
-      {
-        id: 1,
-        operator: 'VLR Travels',
-        type: 'A/C Sleeper (2+1)',
-        from: 'Jaipur',
-        to: 'Jodhpur',
-        departureDate: 'Sept 27',
-        departureTime: '6:15 AM',
-        arrivalDate: 'Sept 27',
-        arrivalTime: '2:15 PM',
-        passengers: 'Harsh, KP',
-        seats: 'D1, D2',
-        fare: '1160',
-      },
-    ],
-    Completed: [
-      {
-        id: 2,
-        operator: 'VLR Travels',
-        type: 'A/C Sleeper (2+1)',
-        from: 'Jaipur',
-        to: 'Jodhpur',
-        departureDate: 'Sept 27',
-        departureTime: '6:15 AM',
-        arrivalDate: 'Sept 27',
-        arrivalTime: '2:15 PM',
-        duration: '8 h 20 m',
-        date: 'September 27',
-        persons: '2 persons',
-        fare: '1160',
-      },
-    ],
-    Cancelled: [
-      {
-        id: 3,
-        operator: 'VLR Travels',
-        type: 'A/C Sleeper (2+1)',
-        from: 'Jaipur',
-        to: 'Jodhpur',
-        departureDate: 'Sept 27',
-        departureTime: '6:15 AM',
-        arrivalDate: 'Sept 27',
-        arrivalTime: '2:15 PM',
-        duration: '8 h 20 m',
-        date: 'September 27',
-        persons: '2 persons',
-        fare: '1160',
-        status: 'cancelled',
-      },
-    ],
+  const loadBookings = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!silent) {
+        setLoading(true);
+      }
+      setError(null);
+
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        if (!token) {
+          setBookings([]);
+          setError('Please sign in to view your bookings.');
+          return;
+        }
+
+        const response = await userAPI.getBookings({ limit: 100 }, token);
+
+        if (response.success) {
+          setBookings(response.data?.bookings || []);
+        } else {
+          setError(response.error || 'Failed to fetch bookings');
+        }
+      } catch (err) {
+        console.error('Bookings fetch error:', err);
+        setError(err.message || 'Failed to fetch bookings');
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+      }
+    },
+    []
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBookings();
+    }, [loadBookings])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadBookings({ silent: true });
+    setRefreshing(false);
+  }, [loadBookings]);
+
+  const groupedBookings = useMemo(() => {
+    const grouped = {
+      Active: [],
+      Completed: [],
+      Cancelled: [],
+    };
+
+    bookings.forEach((booking) => {
+      if (booking.status === 'CANCELLED' || booking.status === 'REFUNDED') {
+        grouped.Cancelled.push(booking);
+      } else if (booking.trip?.tripStatus === 'COMPLETED') {
+        grouped.Completed.push(booking);
+      } else {
+        grouped.Active.push(booking);
+      }
+    });
+
+    return grouped;
+  }, [bookings]);
+
+  const handleCancelBooking = useCallback(
+    async (bookingGroupId) => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        if (!token) {
+          Alert.alert('Not Signed In', 'Please sign in to cancel bookings.');
+          return;
+        }
+
+        setCancellingId(bookingGroupId);
+        const response = await userAPI.cancelTicket(bookingGroupId, token);
+
+        if (response.success) {
+          Alert.alert('Booking Cancelled', 'We have cancelled your tickets and started the refund process.');
+          await loadBookings({ silent: true });
+        } else {
+          throw new Error(response.error || 'Failed to cancel booking');
+        }
+      } catch (err) {
+        console.error('Cancel booking error:', err);
+        Alert.alert('Cancellation Failed', err.message || 'We could not cancel this booking. Please try again.');
+      } finally {
+        setCancellingId(null);
+      }
+    },
+    [loadBookings]
+  );
+
+  const handleDownloadTicket = useCallback(async (booking) => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Not Signed In', 'Please sign in to download tickets.');
+        return;
+      }
+
+      setDownloadingId(booking.bookingGroupId);
+      const downloadUrl = buildDownloadUrl(booking.bookingGroupId);
+      const directory = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+      if (!directory) {
+        throw new Error('Storage directory not available');
+      }
+
+      const fileUri = `${directory}ticket-${booking.bookingGroupId}.pdf`;
+      const downloadResult = await FileSystem.downloadAsync(downloadUrl, fileUri, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (downloadResult.status !== 200) {
+        throw new Error('Unable to download ticket at the moment');
+      }
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Share ticket PDF',
+        });
+      } else {
+        Alert.alert('Ticket Downloaded', 'Sharing is not available on this device. The file is stored inside the app sandbox.');
+      }
+    } catch (err) {
+      console.error('Ticket download error:', err);
+      Alert.alert('Download Failed', err.message || 'We could not download the ticket right now.');
+    } finally {
+      setDownloadingId(null);
+    }
+  }, []);
+
+  const confirmCancelBooking = (booking) => {
+    Alert.alert(
+      'Cancel Booking',
+      'Seats will be released immediately and refund will follow our policy. Do you want to cancel?',
+      [
+        { text: 'Keep Booking', style: 'cancel' },
+        {
+          text: 'Cancel Trip',
+          style: 'destructive',
+          onPress: () => handleCancelBooking(booking.bookingGroupId),
+        },
+      ]
+    );
   };
 
-  const tabs = ['Active', 'Completed', 'Cancelled'];
-
-  const renderBookingCard = (booking) => (
-    <View key={booking.id} style={styles.bookingCard}>
-      {/* Top Row - Operator Info */}
-      <View style={styles.operatorRow}>
-        <Image
-          source={require('../../assets/logo.png')}
-          style={styles.operatorLogo}
-        />
-        <View style={styles.operatorInfo}>
-          <Text style={styles.operatorName}>{booking.operator}</Text>
-          <Text style={styles.busType}>{booking.type}</Text>
-        </View>
+  const renderErrorBanner = () => {
+    if (!error) return null;
+    const isAuthError = error.toLowerCase().includes('sign in');
+    return (
+      <View style={styles.errorBanner}>
+        <MaterialCommunityIcons name="alert-circle" size={18} color="#B91C1C" />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity
+          style={styles.errorAction}
+          onPress={() => {
+            if (isAuthError) {
+              navigation.navigate('SignIn');
+            } else {
+              loadBookings();
+            }
+          }}
+        >
+          <Text style={styles.errorActionText}>{isAuthError ? 'Sign In' : 'Retry'}</Text>
+        </TouchableOpacity>
       </View>
+    );
+  };
 
-      {/* Middle Section - Journey Details */}
-      <View style={styles.journeySection}>
-        {/* From (Origin) */}
-        <View style={[styles.locationContainer, { alignItems: 'flex-start', minWidth: 70, paddingLeft: 0 }]}> 
-          <Text style={styles.cityName}>{booking.from}</Text>
-        </View>
-
-        {/* Center Connector with Bus Icon */}
-        <View style={styles.connectorWrapper}>
-          <View style={styles.connectorContainer}>
-            <View style={styles.dottedLine} />
-            <MaterialCommunityIcons
-              name="bus"
-              size={16}
-              color="#3B82F6"
-              style={styles.busIcon}
-            />
-            <View style={styles.dottedLine} />
-          </View>
-          {booking.duration && (
-            <Text style={styles.durationText}>{booking.duration}</Text>
-          )}
-        </View>
-
-        {/* To (Destination) */}
-        <View style={[styles.locationContainer, { alignItems: 'flex-end', minWidth: 70, paddingRight: 0 }]}> 
-          <Text style={[styles.cityName, { textAlign: 'right' }]}>{booking.to}</Text>
-        </View>
-      </View>
-
-      {/* Bottom Row - Booking Meta Info */}
-      {booking.date ? (
-        <View style={styles.completedMetaRow}>
-          <View style={styles.completedMetaItem}>
-            <MaterialCommunityIcons name="calendar" size={14} color="#6B7280" />
-            <Text style={styles.completedMetaText}>{booking.date}</Text>
-          </View>
-          <View style={styles.completedMetaItem}>
-            <MaterialCommunityIcons name="account" size={14} color="#6B7280" />
-            <Text style={styles.completedMetaText}>{booking.persons}</Text>
-          </View>
-          <View style={styles.completedMetaItem}>
-            <MaterialCommunityIcons 
-              name="credit-card" 
-              size={14} 
-              color={booking.status === 'cancelled' ? '#EF4444' : '#6B7280'} 
-            />
-            <Text style={[
-              styles.completedMetaText,
-              booking.status === 'cancelled' && { color: '#EF4444' }
-            ]}>₹ {booking.fare}</Text>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.metaRow}>
-          <View style={styles.metaColumn}>
-            <Text style={styles.metaLabel}>Passenger Name</Text>
-            <Text style={styles.metaValue}>{booking.passengers}</Text>
-          </View>
-          <View style={styles.metaColumn}>
-            <Text style={styles.metaLabel}>Seat No.</Text>
-            <Text style={styles.metaValue}>{booking.seats}</Text>
-          </View>
-          <View style={styles.metaColumn}>
-            <Text style={styles.metaLabel}>Ticket Fare</Text>
-            <Text style={styles.metaValue}>₹ {booking.fare}</Text>
-          </View>
-        </View>
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <MaterialCommunityIcons name="calendar-blank" size={28} color="#9CA3AF" />
+      <Text style={styles.emptyStateTitle}>No {selectedTab.toLowerCase()} bookings</Text>
+      <Text style={styles.emptyStateSubtext}>When you reserve seats, they will show up here automatically.</Text>
+      {selectedTab !== 'Cancelled' && (
+        <TouchableOpacity style={styles.ctaButton} onPress={() => navigation.navigate('Home')} activeOpacity={0.8}>
+          <Text style={styles.ctaButtonText}>Search Buses</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
 
+  const renderBookingCard = ({ item: booking }) => {
+    const tripDate = parseTripDate(booking.trip?.tripDate);
+    const departureDateTime = parseDateValue(booking.route?.from?.departureTime, tripDate);
+    const arrivalDateTime = parseDateValue(booking.route?.to?.arrivalTime, tripDate);
+    const boardingTime = parseDateValue(
+      booking.boardingPoint?.time,
+      departureDateTime || tripDate
+    );
+    const droppingTime = parseDateValue(
+      booking.droppingPoint?.time,
+      arrivalDateTime || tripDate
+    );
+    const statusMeta = getStatusMeta(booking);
+    const seatLabel = getSeatLabel(booking);
+    const passengersLabel = `${booking.seatCount || booking.seats?.length || 0} Passenger${(booking.seatCount || 0) > 1 ? 's' : ''}`;
+    const durationText = formatDuration(departureDateTime, arrivalDateTime);
+    const isCancellable = canCancelBooking(booking, departureDateTime);
+    const canDownload = booking.status !== 'CANCELLED';
+
+    return (
+      <View style={styles.bookingCard}>
+        <View style={styles.cardHeader}>
+          <View style={styles.operatorRow}>
+            <Image source={require('../../assets/logo.png')} style={styles.operatorLogo} />
+            <View style={styles.operatorInfo}>
+              <Text style={styles.operatorName}>{booking.bus?.name || 'Bus Partner'}</Text>
+              <Text style={styles.busType}>{booking.bus?.type || 'Coach'}</Text>
+            </View>
+          </View>
+          <View style={[styles.statusPill, { backgroundColor: statusMeta.bg }]}>
+            <Text style={[styles.statusPillText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
+          </View>
+        </View>
+
+        <View style={styles.tripDateRow}>
+          <MaterialCommunityIcons name="calendar" size={16} color="#3B82F6" />
+          <Text style={styles.tripDateText}>{formatDateLabel(departureDateTime || tripDate)}</Text>
+          <Text style={styles.bookedAtText}>
+            Booked {booking.bookedAt ? new Date(booking.bookedAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : '--'}
+          </Text>
+        </View>
+
+        <View style={styles.journeySection}>
+          <View style={styles.locationContainer}>
+            <Text style={styles.cityName}>{booking.route?.from?.city || booking.route?.from?.name}</Text>
+            <Text style={styles.stationName}>{booking.route?.from?.name}</Text>
+            <Text style={styles.dateTime}>{formatTimeLabel(departureDateTime)}</Text>
+          </View>
+
+          <View style={styles.connectorWrapper}>
+            <View style={styles.connectorContainer}>
+              <View style={styles.dottedLine} />
+              <MaterialCommunityIcons name="bus" size={18} color="#2563EB" style={styles.busIcon} />
+              <View style={styles.dottedLine} />
+            </View>
+            {durationText && <Text style={styles.durationText}>{durationText}</Text>}
+          </View>
+
+          <View style={[styles.locationContainer, { alignItems: 'flex-end' }]}>
+            <Text style={styles.cityName}>{booking.route?.to?.city || booking.route?.to?.name}</Text>
+            <Text style={styles.stationName}>{booking.route?.to?.name}</Text>
+            <Text style={styles.dateTime}>{formatTimeLabel(arrivalDateTime)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.metaRow}>
+          <View style={styles.metaColumn}>
+            <Text style={styles.metaLabel}>Passengers</Text>
+            <Text style={styles.metaValue}>{passengersLabel}</Text>
+          </View>
+          <View style={styles.metaColumn}>
+            <Text style={styles.metaLabel}>Seat No.</Text>
+            <Text style={styles.metaValue}>{seatLabel}</Text>
+          </View>
+          <View style={styles.metaColumn}>
+            <Text style={styles.metaLabel}>Amount</Text>
+            <Text style={styles.metaValue}>{formatCurrency(booking.finalPrice ?? booking.totalPrice, booking.payment?.currency)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.boardingCard}>
+          <View style={styles.boardingRow}>
+            <MaterialCommunityIcons name="map-marker" size={18} color="#475569" />
+            <Text style={styles.boardingLabel}>Boarding</Text>
+            <Text style={styles.boardingValue}>
+              {booking.boardingPoint?.name || 'NA'} • {formatTimeLabel(boardingTime)}
+            </Text>
+          </View>
+          <View style={styles.boardingRow}>
+            <MaterialCommunityIcons name="map-marker-distance" size={18} color="#475569" />
+            <Text style={styles.boardingLabel}>Dropping</Text>
+            <Text style={styles.boardingValue}>
+              {booking.droppingPoint?.name || 'NA'} {droppingTime ? `• ${formatTimeLabel(droppingTime)}` : ''}
+            </Text>
+          </View>
+          <View style={styles.boardingRow}>
+            <MaterialCommunityIcons name="credit-card" size={18} color="#475569" />
+            <Text style={styles.boardingLabel}>Payment</Text>
+            <Text style={styles.boardingValue}>{booking.payment?.method || '—'}</Text>
+          </View>
+        </View>
+
+        {booking.coupon?.code && (
+          <View style={styles.couponPill}>
+            <MaterialCommunityIcons name="ticket-confirmation" size={16} color="#0F172A" />
+            <Text style={styles.couponText}>{booking.coupon.code} applied</Text>
+            <Text style={styles.couponSavings}>Saved ₹{booking.discountAmount || 0}</Text>
+          </View>
+        )}
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.primaryAction, !canDownload && styles.disabledAction]}
+            onPress={() => canDownload && handleDownloadTicket(booking)}
+            activeOpacity={0.8}
+            disabled={!canDownload || downloadingId === booking.bookingGroupId}
+          >
+            {downloadingId === booking.bookingGroupId ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <MaterialCommunityIcons name="download" size={18} color="#FFFFFF" />
+            )}
+            <Text style={styles.primaryActionText}>{canDownload ? 'Download Ticket' : 'Ticket Unavailable'}</Text>
+          </TouchableOpacity>
+
+          {isCancellable ? (
+            <TouchableOpacity
+              style={styles.secondaryAction}
+              onPress={() => confirmCancelBooking(booking)}
+              activeOpacity={0.8}
+              disabled={cancellingId === booking.bookingGroupId}
+            >
+              {cancellingId === booking.bookingGroupId ? (
+                <ActivityIndicator size="small" color="#B91C1C" />
+              ) : (
+                <MaterialCommunityIcons name="cancel" size={18} color="#B91C1C" />
+              )}
+              <Text style={styles.secondaryActionText}>Cancel Trip</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.secondaryGhostAction} onPress={() => navigation.navigate('Home')} activeOpacity={0.8}>
+              <Text style={styles.secondaryGhostText}>Book Again</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar hidden />
-      
-      {/* Top Background Image Section */}
+
       <View style={styles.topImageSection}>
         <ImageBackground
           source={require('../../assets/landing-background.jpg')}
@@ -175,57 +486,58 @@ const BookingsScreen = ({ navigation }) => {
           <View style={styles.overlay} />
 
           <SafeAreaView edges={['top']} style={styles.safeHeader}>
-            {/* Header */}
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Bookings</Text>
+              <Text style={styles.headerTitle}>My Bookings</Text>
+              <Text style={styles.headerSubtitle}>Track every journey, cancellations, and receipts in one place.</Text>
             </View>
           </SafeAreaView>
         </ImageBackground>
       </View>
 
-      {/* Tab Selector */}
       <View style={styles.tabSelectorContainer}>
         <View style={styles.tabSelector}>
           {tabs.map((tab) => (
             <TouchableOpacity
               key={tab}
-              style={[
-                styles.tab,
-                selectedTab === tab && styles.tabActive,
-              ]}
+              style={[styles.tab, selectedTab === tab && styles.tabActive]}
               onPress={() => setSelectedTab(tab)}
               activeOpacity={0.7}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  selectedTab === tab && styles.tabTextActive,
-                ]}
-              >
-                {tab}
-              </Text>
+              <Text style={[styles.tabText, selectedTab === tab && styles.tabTextActive]}>{tab}</Text>
             </TouchableOpacity>
           ))}
         </View>
+        {renderErrorBanner()}
       </View>
 
-      {/* Bookings List Area - White Background */}
       <View style={styles.bookingsListArea}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {bookings[selectedTab].length > 0 ? (
-            bookings[selectedTab].map((booking) => renderBookingCard(booking))
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>
-                No {selectedTab.toLowerCase()} bookings
-              </Text>
-            </View>
-          )}
-        </ScrollView>
+        {loading && !refreshing ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color="#2563EB" />
+            <Text style={styles.loadingText}>Fetching bookings...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={groupedBookings[selectedTab]}
+            keyExtractor={(item) => item.bookingGroupId}
+            contentContainerStyle={
+              groupedBookings[selectedTab].length === 0
+                ? styles.flatListEmpty
+                : styles.scrollContent
+            }
+            renderItem={renderBookingCard}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#2563EB"
+                colors={['#2563EB']}
+              />
+            }
+            ListEmptyComponent={!loading ? renderEmptyState : null}
+          />
+        )}
       </View>
     </View>
   );
@@ -236,10 +548,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  
-  // Top Image Section
   topImageSection: {
-    height: SCREEN_HEIGHT * 0.18,
+    height: SCREEN_HEIGHT * 0.24,
     width: '100%',
   },
   backgroundImage: {
@@ -249,94 +559,94 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Soft teal overlay
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
   },
   safeHeader: {
     flex: 1,
+    justifyContent: 'flex-end',
   },
-  
-  // Header
   header: {
-    alignItems: 'center',
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
   },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: 0.4,
   },
-
-  // Tab Selector
+  headerSubtitle: {
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+    fontSize: 14,
+  },
   tabSelectorContainer: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
     paddingHorizontal: 16,
-    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   tabSelector: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 25,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
     padding: 4,
-    gap: 4,
+    gap: 6,
   },
   tab: {
-    paddingHorizontal: 24,
+    flex: 1,
+    paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: 'transparent',
-    minWidth: 100,
+    borderRadius: 999,
     alignItems: 'center',
   },
   tabActive: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#1D4ED8',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#475569',
   },
   tabTextActive: {
     color: '#FFFFFF',
   },
-
-  // Bookings List Area
   bookingsListArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 32,
   },
-
-  // Booking Card
+  flatListEmpty: {
+    padding: 16,
+    flexGrow: 1,
+  },
   bookingCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16, // Smooth rounded corners
+    borderRadius: 20,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, // Subtle shadow
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
   },
-
-  // Operator Row
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   operatorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8, // Reduced from 16 for compact spacing
+    flex: 1,
   },
   operatorLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     marginRight: 12,
   },
   operatorInfo: {
@@ -345,120 +655,262 @@ const styles = StyleSheet.create({
   operatorName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 2,
+    color: '#0F172A',
   },
   busType: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#475569',
+    marginTop: 2,
   },
-
-  // Journey Section
+  statusPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  tripDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  tripDateText: {
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '600',
+  },
+  bookedAtText: {
+    marginLeft: 'auto',
+    fontSize: 12,
+    color: '#94A3B8',
+  },
   journeySection: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    width: '100%',
-    marginBottom: 8,
-    paddingVertical: 4,
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   locationContainer: {
-    flexDirection: 'column',
-    justifyContent: 'center',
-    flexShrink: 0,
+    flexShrink: 1,
+  },
+  cityName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1D4ED8',
+  },
+  stationName: {
+    fontSize: 13,
+    color: '#475569',
+    marginTop: 2,
+  },
+  dateTime: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 2,
   },
   connectorWrapper: {
     flex: 1,
-    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 40,
-    maxWidth: '60%',
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
   },
   connectorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     width: '100%',
   },
   dottedLine: {
     flex: 1,
-    height: 1,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
     borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   busIcon: {
-    marginHorizontal: 4,
+    marginHorizontal: 8,
   },
   durationText: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
-  cityName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#3B82F6', // Blue color for city names
-    marginBottom: 4,
-  },
-  dateTime: {
     fontSize: 12,
-    color: '#9CA3AF', // Gray color
+    color: '#94A3B8',
+    marginTop: 6,
   },
-
-  // Meta Row
   metaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#D1D5DB',
-    borderStyle: 'dashed', // Dashed divider
+    borderBottomWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 12,
+    marginBottom: 12,
   },
   metaColumn: {
     flex: 1,
   },
   metaLabel: {
     fontSize: 12,
-    color: '#9CA3AF', // Light gray for labels
+    color: '#94A3B8',
     marginBottom: 4,
-    fontWeight: '400', // No bold
   },
   metaValue: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937', // Dark text for values
+    fontWeight: '700',
+    color: '#0F172A',
   },
-  completedMetaRow: {
+  boardingCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  boardingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#D1D5DB',
-    borderStyle: 'dashed',
+    marginBottom: 8,
   },
-  completedMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  completedMetaText: {
+  boardingLabel: {
     fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: '#475569',
+    marginLeft: 8,
+    width: 78,
   },
-
-  // Empty State
-  emptyState: {
+  boardingValue: {
+    fontSize: 13,
+    color: '#0F172A',
+    flex: 1,
+  },
+  couponPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    marginBottom: 12,
+  },
+  couponText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  couponSavings: {
+    fontSize: 12,
+    color: '#92400E',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  primaryAction: {
+    flex: 1,
+    backgroundColor: '#1D4ED8',
+    borderRadius: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    gap: 8,
   },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#9CA3AF',
+  primaryActionText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  secondaryAction: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#F87171',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  secondaryActionText: {
+    color: '#B91C1C',
+    fontWeight: '600',
+  },
+  secondaryGhostAction: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#CBD5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryGhostText: {
+    color: '#1D4ED8',
+    fontWeight: '600',
+  },
+  disabledAction: {
+    backgroundColor: '#CBD5F5',
+  },
+  errorBanner: {
+    marginTop: 12,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    flex: 1,
+    color: '#991B1B',
+    fontSize: 13,
+  },
+  errorAction: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#B91C1C',
+  },
+  errorActionText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 32,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  emptyStateSubtext: {
+    textAlign: 'center',
+    color: '#475569',
+    fontSize: 13,
+  },
+  ctaButton: {
+    marginTop: 8,
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 999,
+  },
+  ctaButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    color: '#475569',
+    fontSize: 14,
   },
 });
 

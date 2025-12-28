@@ -1,11 +1,12 @@
 {
   "expo": {
-    "name": " ",
+    "name": "Bus Booking",
     "slug": "bus-booking-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
@@ -28,6 +29,21 @@
     "web": {
       "favicon": "./assets/logo.png"
     },
-    "sdkVersion": "54.0.0"
+    "sdkVersion": "54.0.0",
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c285e44f-25cb-469c-bc90-65e3ecda9075"
+      }
+    }
   }
 }

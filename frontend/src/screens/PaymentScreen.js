@@ -10,11 +10,13 @@ import {
   Alert,
   ActivityIndicator,
   Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
+import Constants from 'expo-constants';
 import api from '../services/api';
 import CryptoJS from 'crypto-js';
 
@@ -67,8 +69,14 @@ const PaymentScreen = ({ navigation, route }) => {
   const openRazorpayCheckout = async (paymentData, token) => {
     console.log('🏁 Starting REAL Razorpay checkout (no simulation)...');
     
-    // Check if running in Expo Go
-    const isExpoGo = Constants.executionEnvironment === 'storeClient';
+    // Check if running in Expo Go (safe check for production builds)
+    const isExpoGo = Constants?.executionEnvironment === 'storeClient';
+    console.log('📱 Environment check:', {
+      executionEnvironment: Constants?.executionEnvironment,
+      isExpoGo,
+      platform: Platform.OS
+    });
+    
     if (isExpoGo) {
       Alert.alert(
         'Real Payments Not Available in Expo Go', 
@@ -231,7 +239,18 @@ const PaymentScreen = ({ navigation, route }) => {
   const [paymentUrl, setPaymentUrl] = useState('');
   const [currentPaymentId, setCurrentPaymentId] = useState('');
   const [authToken, setAuthToken] = useState('');
-  const [showWebView, setShowWebView] = useState({ visible: false, html: '', paymentData: null, token: null });
+  const [showWebView, setShowWebView] = useState({ 
+    visible: false, 
+    html: '', 
+    uri: null,
+    paymentData: null, 
+    token: null,
+    error: null,
+    debugInfo: null
+  });
+  
+  // Debug state for on-screen error display
+  const [debugMessage, setDebugMessage] = useState(null);
 
   const paymentMethods = [
     { id: 'RAZORPAY', label: 'Razorpay' },
@@ -480,22 +499,16 @@ const PaymentScreen = ({ navigation, route }) => {
       if (verificationResponse.success) {
         Alert.alert(
           'Payment Successful! ✅',
-          `Your booking has been confirmed!\n\nPayment ID: ${razorpayResponse.razorpay_payment_id}\nBooking will be processed shortly.`,
+          `Your booking has been confirmed!\n\nPayment ID: ${razorpayResponse.razorpay_payment_id}`,
           [
             {
-              text: 'View Bookings',
+              text: 'View My Bookings',
               onPress: () => {
-                // Navigate to bookings or home
+                // Navigate to My Bookings
                 navigation.reset({
                   index: 0,
-                  routes: [{ name: 'BusSearchScreen' }],
+                  routes: [{ name: 'Bookings' }],
                 });
-              },
-            },
-            {
-              text: 'OK',
-              onPress: () => {
-                console.log('Payment completed successfully');
               },
             },
           ]
@@ -569,14 +582,17 @@ const PaymentScreen = ({ navigation, route }) => {
       
       if (verificationResponse.success) {
         Alert.alert(
-          'Payment Successful!',
-          'Your ticket has been booked successfully! In a production app, you would see your booking details.',
+          'Payment Successful! ✅',
+          'Your ticket has been booked successfully!',
           [
             {
-              text: 'OK',
+              text: 'View My Bookings',
               onPress: () => {
-                // Navigate back or to bookings
-                console.log('Payment completed successfully');
+                // Navigate to My Bookings
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Bookings' }],
+                });
               },
             },
           ]
@@ -611,58 +627,356 @@ const PaymentScreen = ({ navigation, route }) => {
 
   const handleEsewaPayment = async (paymentData, token) => {
     try {
-      // For eSewa, we need to open a web form
-      Alert.alert(
-        'eSewa Payment',
-        'You will be redirected to eSewa payment gateway.',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Continue',
-            onPress: async () => {
-              // For demo purposes, simulate eSewa success
-              Alert.alert(
-                'eSewa Payment',
-                'In a production app, this would redirect to eSewa. For demo purposes, simulating successful payment.',
-                [
-                  {
-                    text: 'Simulate Success',
-                    onPress: () => {
-                      Alert.alert(
-                        'Payment Successful!',
-                        'Your eSewa payment was successful! Your ticket has been booked.',
-                        [
-                          {
-                            text: 'OK',
-                            onPress: () => {
-                              console.log('eSewa payment completed successfully');
-                            },
-                          },
-                        ]
-                      );
-                    },
-                  },
-                ]
-              );
-            },
-          },
-        ]
-      );
+      console.log('🔵 Starting eSewa payment with data:', JSON.stringify(paymentData, null, 2));
+      setDebugMessage(`Starting eSewa...\nPayment ID: ${paymentData.paymentId}\nAmount: ${paymentData.amount}`);
+      
+      // Check if we have the form data from backend
+      if (!paymentData.form || !paymentData.form.formUrl || !paymentData.form.params) {
+        const errorMsg = `eSewa form data incomplete!\n\nReceived: ${JSON.stringify(paymentData, null, 2)}`;
+        console.error('❌', errorMsg);
+        setDebugMessage(errorMsg);
+        Alert.alert('Payment Error', 'eSewa form data incomplete from server');
+        setPaymentLoading(false);
+        return;
+      }
+
+      const { formUrl, params } = paymentData.form;
+
+      // Force rc sandbox v2 endpoint to avoid older v1 POST rejection
+      const esewaFormUrl = 'https://rc-epay.esewa.com.np/api/epay/main/v2/form';
+      
+      // Use HTTPS callback URLs so eSewa accepts the payload, but still intercept them in WebView
+      const CALLBACK_BASE = 'https://gantabya-44tr.onrender.com/payment/esewa';
+      const mobileSuccessUrl = `${CALLBACK_BASE}/success?paymentId=${paymentData.paymentId}`;
+      const mobileFailureUrl = `${CALLBACK_BASE}/failure?paymentId=${paymentData.paymentId}`;
+      
+      setDebugMessage(`Form URL: ${esewaFormUrl} (was ${formUrl})\nAmount: ${params.total_amount}\nProduct: ${params.product_code}\nSignature: ${params.signature ? 'OK' : 'MISSING!'}`);
+      
+      console.log('🔵 eSewa params (with mobile intercept URLs):', {
+        formUrl: esewaFormUrl,
+        amount: params.amount,
+        total_amount: params.total_amount,
+        transaction_uuid: params.transaction_uuid,
+        product_code: params.product_code,
+        success_url: mobileSuccessUrl,
+        failure_url: mobileFailureUrl,
+        signature: params.signature ? 'SET' : 'MISSING',
+      });
+      
+      // Create HTML form for eSewa payment
+      const esewaFormHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>eSewa Payment</title>
+          <style>
+            * { box-sizing: border-box; }
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+              display: flex; 
+              flex-direction: column;
+              justify-content: center; 
+              align-items: center; 
+              min-height: 100vh; 
+              margin: 0;
+              padding: 20px;
+              background: linear-gradient(135deg, #60BB46 0%, #4a9438 100%);
+            }
+            .container {
+              text-align: center;
+              color: white;
+              max-width: 100%;
+            }
+            .spinner {
+              border: 4px solid rgba(255,255,255,0.3);
+              border-top: 4px solid white;
+              border-radius: 50%;
+              width: 50px;
+              height: 50px;
+              animation: spin 1s linear infinite;
+              margin: 20px auto;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            h2 { margin: 0 0 10px 0; font-size: 20px; }
+            p { margin: 5px 0; font-size: 14px; opacity: 0.9; }
+            .debug-info {
+              background: rgba(0,0,0,0.2);
+              border-radius: 8px;
+              padding: 15px;
+              margin-top: 20px;
+              text-align: left;
+              font-size: 11px;
+              max-width: 350px;
+              word-break: break-all;
+            }
+            .debug-info h4 { margin: 0 0 10px 0; font-size: 12px; }
+            .debug-row { margin: 3px 0; }
+            .error-box {
+              background: #ff4444;
+              border-radius: 8px;
+              padding: 15px;
+              margin-top: 20px;
+              max-width: 350px;
+            }
+            .manual-btn {
+              background: white;
+              color: #60BB46;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 25px;
+              font-size: 16px;
+              font-weight: bold;
+              margin-top: 20px;
+              cursor: pointer;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="spinner" id="spinner"></div>
+            <h2>Redirecting to eSewa...</h2>
+            <p>Amount: NPR ${params.total_amount}</p>
+            <p>Transaction: ${params.transaction_uuid}</p>
+            
+            <div class="debug-info">
+              <h4>Debug Info:</h4>
+              <div class="debug-row">Form URL: ${formUrl}</div>
+              <div class="debug-row">Product Code: ${params.product_code}</div>
+              <div class="debug-row">Success URL: ${params.success_url}</div>
+              <div class="debug-row">Signature: ${params.signature ? params.signature.substring(0, 20) + '...' : 'MISSING'}</div>
+            </div>
+            
+            <div id="error-container" style="display:none;" class="error-box">
+              <p id="error-message"></p>
+            </div>
+            
+            <button class="manual-btn" onclick="document.getElementById('esewaForm').submit();">
+              Click here if not redirected
+            </button>
+          </div>
+          
+          <form id="esewaForm" action="${esewaFormUrl}" method="POST" style="display:none;">
+            <input type="hidden" name="amount" value="${params.amount || ''}" />
+            <input type="hidden" name="tax_amount" value="${params.tax_amount || '0'}" />
+            <input type="hidden" name="total_amount" value="${params.total_amount || ''}" />
+            <input type="hidden" name="transaction_uuid" value="${params.transaction_uuid || ''}" />
+            <input type="hidden" name="product_code" value="${params.product_code || ''}" />
+            <input type="hidden" name="product_service_charge" value="${params.product_service_charge || '0'}" />
+            <input type="hidden" name="product_delivery_charge" value="${params.product_delivery_charge || '0'}" />
+            <input type="hidden" name="success_url" value="${mobileSuccessUrl}" />
+            <input type="hidden" name="failure_url" value="${mobileFailureUrl}" />
+            <input type="hidden" name="signed_field_names" value="${params.signed_field_names || ''}" />
+            <input type="hidden" name="signature" value="${params.signature || ''}" />
+          </form>
+          
+          <script>
+            try {
+              console.log('eSewa form submitting...');
+              setTimeout(function() {
+                document.getElementById('esewaForm').submit();
+              }, 1500);
+            } catch(e) {
+              document.getElementById('spinner').style.display = 'none';
+              document.getElementById('error-container').style.display = 'block';
+              document.getElementById('error-message').innerText = 'Form submit error: ' + e.message;
+            }
+          </script>
+        </body>
+        </html>
+      `;
+
+      // Clear debug message when WebView opens
+      setDebugMessage(null);
+      
+      // Show WebView with eSewa form
+      setShowWebView({
+        visible: true,
+        html: esewaFormHtml,
+        uri: null,
+        paymentData: paymentData,
+        token: token,
+        error: null,
+        debugInfo: null
+      });
+
     } catch (error) {
-      console.error('eSewa payment error:', error);
-      Alert.alert(
-        'eSewa Payment Error',
-        error.message || 'Failed to open eSewa payment. Please try again.'
-      );
+      console.error('❌ eSewa payment error:', error);
+      setDebugMessage(`eSewa Init Error:\n${error.message}\n\nStack: ${error.stack}`);
+      Alert.alert('Payment Error', error.message || 'Failed to initialize eSewa payment');
+      setPaymentLoading(false);
+    }
+  };
+
+  // Handle eSewa callback URL interception - returns false to prevent loading
+  const handleEsewaUrlIntercept = (request) => {
+    const { url } = request;
+    console.log('🔵 WebView URL intercept:', url);
+    setDebugMessage(`Intercepted: ${url.substring(0, 100)}...`);
+
+    const httpsSuccessPrefix = 'https://gantabya-44tr.onrender.com/payment/esewa/success';
+    const httpsFailurePrefix = 'https://gantabya-44tr.onrender.com/payment/esewa/failure';
+
+    // Check for success URL
+    if (url.startsWith('esewa://payment/success/') || url.startsWith(httpsSuccessPrefix)) {
+      console.log('✅ eSewa SUCCESS intercepted!');
+      handleEsewaSuccess(url);
+      return false; // Don't load this URL
+    }
+
+    // Check for failure URL
+    if (url.startsWith('esewa://payment/failure/') || url.startsWith(httpsFailurePrefix)) {
+      console.log('❌ eSewa FAILURE intercepted!');
+      handleEsewaFailure(url);
+      return false; // Don't load this URL
+    }
+
+    // Allow all other URLs (eSewa pages, etc.)
+    return true;
+  };
+
+  // Handle successful eSewa payment
+  const handleEsewaSuccess = async (url) => {
+    setDebugMessage(`Processing success: ${url}`);
+    
+    try {
+      // Extract payment ID from URL (works for custom scheme and https URLs)
+      let paymentIdFromUrl = url.split('/').pop()?.split('?')[0];
+      try {
+        const urlObj = new URL(url.replace('esewa://', 'https://esewa-callback/'));
+        paymentIdFromUrl = urlObj.searchParams.get('paymentId') || paymentIdFromUrl;
+      } catch (parseError) {
+        console.log('URL parse warning:', parseError.message);
+      }
+      console.log('🔵 Payment ID:', paymentIdFromUrl);
+
+      // Try to get eSewa data from URL query params
+      let esewaRefId = null;
+      let transactionCode = null;
+
+      try {
+        // eSewa appends ?data=base64encoded to the URL
+        const dataMatch = url.match(/[?&]data=([^&]+)/);
+        if (dataMatch) {
+          const decodedData = JSON.parse(atob(dataMatch[1]));
+          console.log('🔵 eSewa response data:', decodedData);
+          esewaRefId = decodedData.transaction_code || decodedData.refId || decodedData.transaction_uuid;
+          transactionCode = decodedData.transaction_code;
+          setDebugMessage(`eSewa Ref: ${esewaRefId}, Code: ${transactionCode}`);
+        }
+      } catch (decodeError) {
+        console.log('🔵 Could not decode eSewa data:', decodeError);
+        setDebugMessage(`Decode error: ${decodeError.message}`);
+      }
+
+      // Keep WebView open during verification
+      setDebugMessage('Verifying payment with backend...');
+
+      // Verify payment with backend
+      const verificationData = {
+        paymentId: showWebView.paymentData?.paymentId || paymentIdFromUrl,
+        esewaRefId: esewaRefId || paymentIdFromUrl,
+      };
+
+      console.log('🔵 Verifying payment:', verificationData);
+      const verificationResponse = await api.verifyPayment(verificationData, showWebView.token);
+      console.log('🔵 Verification response:', verificationResponse);
+
+      // Close WebView after verification
+      setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+      setPaymentLoading(false);
+
+      if (verificationResponse.success) {
+        setDebugMessage(null);
+        Alert.alert(
+          'Payment Successful! ✅',
+          `Your eSewa payment was successful!\n\nTransaction ID: ${transactionCode || 'N/A'}\n\nYour booking has been confirmed.`,
+          [{ text: 'View My Bookings', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Bookings' }] }) }]
+        );
+      } else {
+        // Verification failed - show error, don't navigate to bookings
+        setDebugMessage(`Verification failed: ${JSON.stringify(verificationResponse)}`);
+        Alert.alert(
+          'Verification Failed',
+          verificationResponse.errorMessage || 'Payment verification failed. Please contact support.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('❌ Error handling success:', error);
+      setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+      setPaymentLoading(false);
+      setDebugMessage(`Error: ${error.message}\n\nStack: ${error.stack}`);
+      Alert.alert('Error', `Payment error: ${error.message}`, [{ text: 'OK' }]);
+    }
+  };
+
+  // Handle failed eSewa payment
+  const handleEsewaFailure = (url) => {
+    console.log('❌ eSewa payment failed:', url);
+    let paymentId = null;
+    try {
+      const urlObj = new URL(url.replace('esewa://', 'https://esewa-callback/'));
+      paymentId = urlObj.searchParams.get('paymentId');
+    } catch (parseError) {
+      // ignore
+    }
+    setDebugMessage(`Payment Failed for ${paymentId || 'unknown'}:\n${url}`);
+    setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+    setPaymentLoading(false);
+    Alert.alert('Payment Failed', 'Your eSewa payment was not completed. Please try again.', [{ text: 'OK' }]);
+  };
+
+  // Handle eSewa WebView navigation state change (backup handler)
+  const handleEsewaWebViewNavigation = async (navState) => {
+    const { url, loading, title } = navState;
+    console.log('🔵 eSewa WebView navigation:', { url, loading, title });
+
+    // Backup check for success (in case intercept doesn't catch it)
+    if (url && (url.includes('esewa://payment/success') || url.includes('/payment/esewa/success'))) {
+      console.log('✅ eSewa payment success detected at URL:', url);
+      handleEsewaSuccess(url);
+      return;
+    }
+    
+    // Backup check for failure
+    if (url && (url.includes('esewa://payment/failure') || url.includes('/payment/esewa/failure'))) {
+      console.log('❌ eSewa payment failed at URL:', url);
+      handleEsewaFailure(url);
+      return;
+    }
+
+    // Log eSewa page loads for debugging
+    if (url && url.includes('esewa.com')) {
+      console.log('🔵 On eSewa page:', url);
     }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" />
+      
+      {/* Debug Message Display - Shows errors on screen */}
+      {debugMessage && (
+        <View style={styles.debugOverlay}>
+          <View style={styles.debugCard}>
+            <Text style={styles.debugLabel}>🔍 DEBUG INFO:</Text>
+            <ScrollView style={styles.debugScroll}>
+              <Text style={styles.debugText} selectable={true}>{debugMessage}</Text>
+            </ScrollView>
+            <TouchableOpacity 
+              style={styles.debugCloseBtn}
+              onPress={() => setDebugMessage(null)}
+            >
+              <Text style={styles.debugCloseBtnText}>Close Debug</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       
       {/* Header */}
       <View style={styles.header}>
@@ -688,7 +1002,6 @@ const PaymentScreen = ({ navigation, route }) => {
         {/* Payment Details Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Payment Details</Text>
-          
           {/* Base Fare */}
           <View style={styles.fareRow}>
             <Text style={styles.fareLabel}>
@@ -749,7 +1062,12 @@ const PaymentScreen = ({ navigation, route }) => {
                     <View style={styles.radioCircleFilled} />
                   )}
                 </View>
-                <Text style={styles.paymentMethodText}>{method.label}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.paymentMethodText}>{method.label}</Text>
+                  <Text style={styles.paymentMethodSubtext}>
+                    {method.id === 'RAZORPAY' ? 'Pay in INR (₹) - Indian Rupees' : 'Pay in NPR (रू) - Nepali Rupees'}
+                  </Text>
+                </View>
               </View>
             </TouchableOpacity>
           ))}
@@ -824,10 +1142,121 @@ const PaymentScreen = ({ navigation, route }) => {
           {paymentLoading ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.payButtonText}>Pay ₹ {totalAmount}</Text>
+            <Text style={styles.payButtonText}>
+              Pay {selectedPaymentMethod === 'ESEWA' ? 'रू' : '₹'} {totalAmount}
+              {selectedPaymentMethod === 'ESEWA' ? ' (NPR)' : ' (INR)'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
+
+      {/* eSewa WebView Modal */}
+      {showWebView.visible && (
+        <View style={styles.webViewContainer}>
+          <View style={styles.webViewHeader}>
+            <TouchableOpacity
+              style={styles.webViewCloseButton}
+              onPress={() => {
+                setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+                setPaymentLoading(false);
+              }}
+            >
+              <Ionicons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.webViewTitle}>eSewa Payment</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          {/* Error Display */}
+          {showWebView.error ? (
+            <ScrollView style={styles.errorContainer}>
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle" size={48} color="#EF4444" />
+                <Text style={styles.errorTitle}>eSewa Payment Error</Text>
+                <Text style={styles.errorMessage}>{showWebView.error}</Text>
+              </View>
+              
+              {showWebView.debugInfo && (
+                <View style={styles.debugBox}>
+                  <Text style={styles.debugTitle}>Debug Information:</Text>
+                  {Object.entries(showWebView.debugInfo).map(([key, value]) => (
+                    <Text key={key} style={styles.debugText}>
+                      {key}: {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    </Text>
+                  ))}
+                </View>
+              )}
+              
+              <TouchableOpacity 
+                style={styles.retryButton}
+                onPress={() => {
+                  setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+                  setPaymentLoading(false);
+                }}
+              >
+                <Text style={styles.retryButtonText}>Close & Try Again</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          ) : (
+            <WebView
+              source={{ html: showWebView.html }}
+              style={styles.webView}
+              originWhitelist={['*']}
+              onNavigationStateChange={handleEsewaWebViewNavigation}
+              onLoadStart={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.log('🔵 WebView Load Start:', nativeEvent.url);
+              }}
+              onLoadEnd={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.log('🔵 WebView Load End:', nativeEvent.url);
+              }}
+              onError={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.error('❌ WebView error:', nativeEvent);
+                setShowWebView(prev => ({
+                  ...prev,
+                  error: `WebView Error: ${nativeEvent.description || nativeEvent.code || 'Unknown error'}`,
+                  debugInfo: { ...prev.debugInfo, webViewError: nativeEvent }
+                }));
+              }}
+              onHttpError={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.error('❌ WebView HTTP error:', nativeEvent);
+                // Don't show error for our custom scheme URLs
+                if (!nativeEvent.url?.startsWith('esewa://')) {
+                  setShowWebView(prev => ({
+                    ...prev,
+                    error: `HTTP Error ${nativeEvent.statusCode}: ${nativeEvent.description || 'Request failed'}`,
+                    debugInfo: { ...prev.debugInfo, httpError: nativeEvent }
+                  }));
+                }
+              }}
+              onShouldStartLoadWithRequest={handleEsewaUrlIntercept}
+              onMessage={(event) => {
+                console.log('WebView message:', event.nativeEvent.data);
+              }}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+              scalesPageToFit={true}
+              mixedContentMode="always"
+              allowsInlineMediaPlayback={true}
+              mediaPlaybackRequiresUserAction={false}
+              thirdPartyCookiesEnabled={true}
+              sharedCookiesEnabled={true}
+              cacheEnabled={false}
+              incognito={false}
+              renderLoading={() => (
+                <View style={styles.webViewLoading}>
+                  <ActivityIndicator size="large" color="#60BB46" />
+                  <Text style={styles.webViewLoadingText}>Loading eSewa...</Text>
+                </View>
+              )}
+            />
+          )}
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -965,6 +1394,11 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     fontWeight: '500',
   },
+  paymentMethodSubtext: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
 
   // Pay Button
   buttonWrapper: {
@@ -1068,6 +1502,159 @@ const styles = StyleSheet.create({
   },
   discountAmount: {
     color: '#10B981',
+  },
+
+  // WebView styles for eSewa
+  webViewContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFFFFF',
+    zIndex: 1000,
+  },
+  webViewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#60BB46',
+    paddingTop: 50,
+  },
+  webViewCloseButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+  },
+  webViewTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  webView: {
+    flex: 1,
+  },
+  webViewLoading: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  webViewLoadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#60BB46',
+  },
+  
+  // Error display styles
+  errorContainer: {
+    flex: 1,
+    backgroundColor: '#FEF2F2',
+    padding: 20,
+  },
+  errorBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#EF4444',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  debugBox: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 16,
+  },
+  debugTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#E5E7EB',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginBottom: 4,
+  },
+  retryButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // On-screen debug overlay
+  debugOverlay: {
+    position: 'absolute',
+    top: 100,
+    left: 10,
+    right: 10,
+    zIndex: 9999,
+    elevation: 100,
+  },
+  debugCard: {
+    backgroundColor: '#1F2937',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  debugLabel: {
+    color: '#FCD34D',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  debugScroll: {
+    maxHeight: 200,
+  },
+  debugCloseBtn: {
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  debugCloseBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

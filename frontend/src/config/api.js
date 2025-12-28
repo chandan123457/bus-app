@@ -13,12 +13,12 @@
  * - Make sure phone and computer are on the same WiFi network
  */
 
-// TODO: Replace with your actual backend URL
+// Backend URL configuration
 // For development with mobile device, use your local IP address
-// For production, use your deployed backend URL
+// For production APK, use your deployed backend URL
 const API_BASE_URL = __DEV__ 
-  ? 'http://192.168.27.60:3000'  // Updated for mobile testing: use your computer's IP
-  : 'https://your-production-api.com';  // ⚠️ Replace with your production backend URL
+  ? 'http://192.168.27.60:3000'  // Development: local IP for testing
+  : 'https://gantabya-44tr.onrender.com';  // Production: Render backend URL
 
 // Log API URL in development for debugging
 if (__DEV__) {
@@ -41,17 +41,29 @@ export const API_ENDPOINTS = {
   SHOW_BUS: '/user/showbus',
   BUS_INFO: '/user/showbusinfo',
   MY_BOOKINGS: '/user/mybookings',
+  BOOKING_DETAILS: '/user/bookingdetails', // :groupId
+  CANCEL_TICKET: '/user/cancelticket',
+  DOWNLOAD_TICKET: '/user/booking/download-ticket', // :groupId
   
   // Payment endpoints
   PAYMENT_INITIATE: '/user/payments/initiate',
   PAYMENT_VERIFY: '/user/payments/verify',
+  PAYMENT_CONFIRM: '/user/payments/confirm',
   
   // Coupon endpoints
   APPLY_COUPON: '/user/booking/apply-coupon',
+  TRIP_COUPONS: '/user/trip', // :tripId/coupons
+  
+  // Notification endpoints
+  NOTIFICATIONS: '/user/notifications',
+  NOTIFICATIONS_UNREAD_COUNT: '/user/notifications/unread-count',
+  NOTIFICATION_READ: '/user/notifications', // :id/read (PATCH)
+  NOTIFICATION_READ_ALL: '/user/notifications/read-all', // (PATCH)
   
   // Other endpoints
   PROFILE: '/user/profile',
   OFFERS: '/user/offers',
+  TRIP_SEATS: '/user/trip', // :tripId/seats
 };
 
 export default API_BASE_URL;
