@@ -10,6 +10,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LandingScreen from '../screens/LandingScreen';
 import SignInScreen from '../screens/SignInScreen';
 import SignUpScreen from '../screens/SignUpScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BusSearchResultsScreen from '../screens/BusSearchResultsScreen';
 import SeatSelectionScreen from '../screens/SeatSelectionScreen';
@@ -61,6 +62,15 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="SignUp" 
           component={SignUpScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+
+        {/* Forgot Password Screen */}
+        <Stack.Screen 
+          name="ForgotPassword" 
+          component={ForgotPasswordScreen}
           options={{
             animation: 'slide_from_right',
           }}

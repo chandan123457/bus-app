@@ -214,6 +214,48 @@ export const userAPI = {
   },
 
   /**
+   * Forgot password (send OTP)
+   * @param {string} email
+   */
+  forgotPassword: async (email) => {
+    try {
+      const response = await api.post(API_ENDPOINTS.FORGOT_PASSWORD, { email });
+      return {
+        success: true,
+        data: response.data,
+        message: response.data.message || 'If an account exists, an OTP has been sent.',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Failed to request password reset',
+        status: error.response?.status,
+      };
+    }
+  },
+
+  /**
+   * Reset password using OTP
+   * @param {{ email: string, otp: string, newPassword: string }} payload
+   */
+  resetPassword: async (payload) => {
+    try {
+      const response = await api.post(API_ENDPOINTS.RESET_PASSWORD, payload);
+      return {
+        success: true,
+        data: response.data,
+        message: response.data.message || 'Password reset successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Failed to reset password',
+        status: error.response?.status,
+      };
+    }
+  },
+
+  /**
    * Get user profile
    * @param {string} token - JWT token
    * @returns {Promise} API response
@@ -243,6 +285,41 @@ export const userAPI = {
       return {
         success: false,
         error: error.response?.data?.errorMessage || error.message || 'Failed to fetch profile',
+        status: error.response?.status,
+      };
+    }
+  },
+
+  /**
+   * Update user profile
+   * Backend: PATCH /user/profile accepts { name?, phone? }
+   */
+  updateProfile: async (data, token) => {
+    if (!token) {
+      return {
+        success: false,
+        error: 'Authentication required',
+        status: 401,
+      };
+    }
+
+    try {
+      const response = await api.patch(API_ENDPOINTS.PROFILE, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        message: response.data.message || 'Profile updated successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Failed to update profile',
         status: error.response?.status,
       };
     }

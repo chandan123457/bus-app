@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -87,6 +88,10 @@ const ProfileScreen = ({ navigation }) => {
   const [stats, setStats] = useState({ totalBookings: 0, totalSpent: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [editedPhone, setEditedPhone] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const fetchUserProfile = useCallback(async () => {
     setError(null);
@@ -114,6 +119,8 @@ const ProfileScreen = ({ navigation }) => {
 
       if (result.success) {
         setProfile(result.data.user);
+        setEditedName(result.data.user?.name || '');
+        setEditedPhone(result.data.user?.phone || '');
         setStats({
           totalBookings: result.data.statistics?.totalBookings || 0,
           totalSpent: result.data.statistics?.totalSpent || 0,
@@ -166,6 +173,50 @@ const ProfileScreen = ({ navigation }) => {
     ]);
   }, [navigation]);
 
+  const handleEditToggle = () => {
+    if (isEditing) {
+      setEditedName(profile?.name || '');
+      setEditedPhone(profile?.phone || '');
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editedName.trim()) {
+      Alert.alert('Invalid Input', 'Name cannot be empty');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Error', 'Please sign in again');
+        return;
+      }
+
+      const updateData = {
+        name: editedName.trim(),
+        phone: editedPhone.trim() || undefined,
+      };
+
+      const result = await userAPI.updateProfile(updateData, token);
+
+      if (result.success) {
+        setProfile(result.data.user);
+        await AsyncStorage.setItem('userData', JSON.stringify(result.data.user));
+        setIsEditing(false);
+        Alert.alert('Success', 'Profile updated successfully');
+      } else {
+        throw new Error(result.error || 'Failed to update profile');
+      }
+    } catch (err) {
+      Alert.alert('Update Failed', err.message || 'Unable to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const travelerName = profile?.name || 'Traveler';
   const avatarInitial = travelerName.charAt(0).toUpperCase();
   const isVerified = Boolean(profile?.verified);
@@ -178,24 +229,28 @@ const ProfileScreen = ({ navigation }) => {
       label: 'Full Name',
       value: travelerName,
       icon: 'account-outline',
+      editable: true,
     },
     {
       id: 'email',
       label: 'Email Address',
       value: profile?.email || 'Add your email address',
       icon: 'email-check-outline',
+      editable: false,
     },
     {
       id: 'phone',
       label: 'Phone Number',
       value: profile?.phone || 'Add your phone number',
       icon: 'phone-outline',
+      editable: true,
     },
     {
       id: 'memberSince',
       label: 'Member Since',
       value: formatDate(profile?.createdAt),
       icon: 'calendar-month-outline',
+      editable: false,
     },
   ];
 
@@ -221,17 +276,37 @@ const ProfileScreen = ({ navigation }) => {
     },
   ];
 
-  const renderAccountDetail = (detail) => (
-    <View key={detail.id} style={styles.infoRow}>
-      <View style={styles.infoLabelGroup}>
-        <MaterialCommunityIcons name={detail.icon} size={20} color="#6366F1" />
-        <View>
-          <Text style={styles.infoLabel}>{detail.label}</Text>
-          <Text style={styles.infoValue}>{detail.value}</Text>
+  const renderAccountDetail = (detail) => {
+    const isNameField = detail.id === 'name';
+    const isPhoneField = detail.id === 'phone';
+    const showInput = isEditing && detail.editable;
+
+    return (
+      <View key={detail.id} style={styles.infoRow}>
+        <View style={styles.infoLabelGroup}>
+          <MaterialCommunityIcons name={detail.icon} size={20} color="#6366F1" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.infoLabel}>{detail.label}</Text>
+            {showInput ? (
+              <TextInput
+                style={styles.infoInput}
+                value={isNameField ? editedName : isPhoneField ? editedPhone : detail.value}
+                onChangeText={(text) => {
+                  if (isNameField) setEditedName(text);
+                  else if (isPhoneField) setEditedPhone(text);
+                }}
+                placeholder={detail.label}
+                keyboardType={isPhoneField ? 'phone-pad' : 'default'}
+                editable={!saving}
+              />
+            ) : (
+              <Text style={styles.infoValue}>{detail.value}</Text>
+            )}
+          </View>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderQuickAction = (action) => (
     <TouchableOpacity
@@ -330,10 +405,35 @@ const ProfileScreen = ({ navigation }) => {
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>Account Information</Text>
-                <TouchableOpacity style={styles.editLink} activeOpacity={0.7}>
-                  <MaterialCommunityIcons name="pencil-outline" size={16} color="#6366F1" />
-                  <Text style={styles.editText}>Edit</Text>
-                </TouchableOpacity>
+                {!isEditing ? (
+                  <TouchableOpacity style={styles.editLink} onPress={handleEditToggle} activeOpacity={0.7}>
+                    <MaterialCommunityIcons name="pencil-outline" size={16} color="#6366F1" />
+                    <Text style={styles.editText}>Edit</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.editActions}>
+                    <TouchableOpacity
+                      style={styles.cancelBtn}
+                      onPress={handleEditToggle}
+                      activeOpacity={0.7}
+                      disabled={saving}
+                    >
+                      <Text style={styles.cancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+                      onPress={handleSaveProfile}
+                      activeOpacity={0.7}
+                      disabled={saving}
+                    >
+                      {saving ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.saveText}>Save</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
               <View style={styles.infoGrid}>{accountDetails.map(renderAccountDetail)}</View>
             </View>
@@ -570,6 +670,49 @@ const styles = StyleSheet.create({
   editText: {
     color: '#6366F1',
     fontWeight: '600',
+  },
+  editActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cancelBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  cancelText: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '700',
+  },
+  saveBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#6366F1',
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  saveBtnDisabled: {
+    opacity: 0.6,
+  },
+  saveText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  infoInput: {
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '500',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 4,
+    backgroundColor: '#FFFFFF',
   },
   infoGrid: {
     gap: 16,

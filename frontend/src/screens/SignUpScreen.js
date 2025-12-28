@@ -162,10 +162,6 @@ const SignUpScreen = ({ navigation }) => {
     }
   };
 
-  const handleSocialLogin = (provider) => {
-    console.log('Social login:', provider);
-  };
-
   const handleSignIn = () => {
     navigation.goBack();
   };
@@ -459,43 +455,6 @@ const SignUpScreen = ({ navigation }) => {
                   )}
 
                 </TouchableOpacity>
-
-                {/* Divider */}
-                <View style={styles.dividerContainer}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>or sign up with</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                {/* Social Login Icons */}
-                <View style={styles.socialContainer}>
-                  {/* Google */}
-                  <TouchableOpacity
-                    style={styles.socialButton}
-                    onPress={() => handleSocialLogin('google')}
-                    activeOpacity={0.7}
-                  >
-                    <GoogleIcon />
-                  </TouchableOpacity>
-
-                  {/* Facebook */}
-                  <TouchableOpacity
-                    style={styles.socialButton}
-                    onPress={() => handleSocialLogin('facebook')}
-                    activeOpacity={0.7}
-                  >
-                    <FacebookIcon />
-                  </TouchableOpacity>
-
-                  {/* Twitter */}
-                  <TouchableOpacity
-                    style={styles.socialButton}
-                    onPress={() => handleSocialLogin('twitter')}
-                    activeOpacity={0.7}
-                  >
-                    <TwitterIcon />
-                  </TouchableOpacity>
-                </View>
 
                 {/* Footer */}
                 <View style={styles.signInContainer}>
