@@ -22,6 +22,7 @@ import OffersScreen from '../screens/OffersScreen';
 import HelpSupportScreen from '../screens/HelpSupportScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import BoardingPointsScreen from '../screens/BoardingPointsScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -170,6 +171,15 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="Profile" 
           component={ProfileScreen}
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+
+        {/* Notifications Screen */}
+        <Stack.Screen
+          name="Notifications"
+          component={NotificationsScreen}
           options={{
             animation: 'slide_from_right',
           }}

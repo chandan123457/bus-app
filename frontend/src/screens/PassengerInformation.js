@@ -87,17 +87,10 @@ const PassengerInformation = ({ navigation, route }) => {
         gender: 'Male',
         seatId: seat.id,
         seatNumber: seat.seatNumber,
-        email: '',
         phone: '',
       }));
     }
     return [];
-  });
-
-  // Contact details state
-  const [contactDetails, setContactDetails] = useState({
-    phone: '',
-    email: '',
   });
 
   // Update passengers when actualSelectedSeats changes (e.g., from AsyncStorage recovery)
@@ -111,7 +104,6 @@ const PassengerInformation = ({ navigation, route }) => {
           gender: passengers[index]?.gender || 'Male',
           seatId: seat.id,
           seatNumber: seat.seatNumber,
-          email: passengers[index]?.email || '',
           phone: passengers[index]?.phone || '',
         }));
         setPassengers(initialPassengers);
@@ -142,7 +134,6 @@ const PassengerInformation = ({ navigation, route }) => {
 
   const handleProceed = () => {
     // Validate all passenger information
-    const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     
     for (let i = 0; i < passengers.length; i++) {
       const passenger = passengers[i];
@@ -156,32 +147,6 @@ const PassengerInformation = ({ navigation, route }) => {
         alert(`Please enter valid age for Passenger ${i + 1} (1-120)`);
         return;
       }
-      
-      if (!passenger.email.trim()) {
-        alert(`Please enter email for Passenger ${i + 1}`);
-        return;
-      }
-      
-      if (!isValidEmail(passenger.email)) {
-        alert(`Please enter valid email for Passenger ${i + 1}`);
-        return;
-      }
-    }
-    
-    // Validate contact details
-    if (!contactDetails.phone.trim()) {
-      alert('Please enter contact phone number');
-      return;
-    }
-    
-    if (!contactDetails.email.trim()) {
-      alert('Please enter contact email');
-      return;
-    }
-    
-    if (!isValidEmail(contactDetails.email)) {
-      alert('Please enter valid contact email');
-      return;
     }
     
     // Ensure passengers have seatId
@@ -194,13 +159,11 @@ const PassengerInformation = ({ navigation, route }) => {
 
     console.log('=== PASSENGERINFO NAVIGATION DEBUG ===');
     console.log('Validated passengers:', passengersWithSeatId);
-    console.log('Contact:', contactDetails);
     console.log('Selected seats with IDs:', actualSelectedSeats.map(seat => ({ id: seat.id, number: seat.seatNumber })));
     console.log('Navigation params being passed:', {
       busData: !!busData,
       selectedSeats: actualSelectedSeats,
       passengers: passengersWithSeatId,
-      contactDetails: contactDetails,
       busInfo: !!busInfo,
       boardingPoint: !!boardingPoint,
       droppingPoint: !!droppingPoint,
@@ -212,7 +175,6 @@ const PassengerInformation = ({ navigation, route }) => {
       busData: busData,
       selectedSeats: actualSelectedSeats,
       passengers: passengersWithSeatId,
-      contactDetails: contactDetails,
       busInfo: busInfo,
       boardingPoint: boardingPoint,
       droppingPoint: droppingPoint,
@@ -348,34 +310,6 @@ const PassengerInformation = ({ navigation, route }) => {
           ) : (
             <Text style={styles.loadingText}>Loading passenger forms...</Text>
           )}
-        </View>
-
-        {/* Contact Details Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Contact Details</Text>
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Phone Number"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="phone-pad"
-            value={contactDetails.phone}
-            onChangeText={(text) =>
-              setContactDetails({ ...contactDetails, phone: text })
-            }
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={contactDetails.email}
-            onChangeText={(text) =>
-              setContactDetails({ ...contactDetails, email: text })
-            }
-          />
         </View>
 
         {/* Bottom spacing for button */}

@@ -441,7 +441,7 @@ const BookingsScreen = ({ navigation }) => {
             <Text style={styles.metaLabel}>Seat No.</Text>
             <Text style={styles.metaValue}>{seatLabel}</Text>
           </View>
-          <View style={styles.metaColumn}>
+          <View style={styles.metaColumnAmount}>
             <Text style={styles.metaLabel}>Amount</Text>
             <Text style={styles.metaValue}>{formatCurrency(booking.finalPrice ?? booking.totalPrice, booking.payment?.currency)}</Text>
           </View>
@@ -597,23 +597,23 @@ const BookingsScreen = ({ navigation }) => {
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Home')} activeOpacity={0.7}>
-          <HomeIconNav />
+          <HomeIconNav active={false} />
           <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} activeOpacity={0.7}>
-          <BookingsIconNav active />
-          <Text style={styles.navLabel}>Bookings</Text>
+          <BookingsIconNav active={true} />
+          <Text style={[styles.navLabel, styles.navLabelActive]}>Bookings</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Offers')} activeOpacity={0.7}>
-          <OffersIconNav />
+          <OffersIconNav active={false} />
           <Text style={styles.navLabel}>Offers</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Support')} activeOpacity={0.7}>
-          <SupportIconNav />
+          <SupportIconNav active={false} />
           <Text style={styles.navLabel}>Support</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Profile')} activeOpacity={0.7}>
-          <ProfileIconNav />
+          <ProfileIconNav active={false} />
           <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -819,19 +819,29 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     paddingVertical: 12,
     marginBottom: 12,
+    alignItems: 'flex-start',
   },
   metaColumn: {
     flex: 1,
+    alignItems: 'flex-start',
+  },
+  metaColumnAmount: {
+    flex: 1,
+    alignItems: 'flex-end',
   },
   metaLabel: {
     fontSize: 12,
     color: '#94A3B8',
     marginBottom: 4,
+    textAlign: 'left',
   },
   metaValue: {
     fontSize: 14,
     fontWeight: '700',
     color: '#0F172A',
+    textAlign: 'left',
+    flexWrap: 'wrap',
+    lineHeight: 18,
   },
   boardingCard: {
     backgroundColor: '#F8FAFC',
@@ -1012,6 +1022,10 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 4,
     fontWeight: '400',
+  },
+  navLabelActive: {
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
 });
 

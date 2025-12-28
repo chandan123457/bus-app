@@ -138,19 +138,44 @@ const SignUpScreen = ({ navigation }) => {
       const result = await userAPI.signup(signupPayload);
 
       if (result.success) {
-        // Show OTP verification modal instead of navigating away
+        // Success: Show OTP verification modal
         setShowOTPModal(true);
         setError(''); // Clear any previous errors
-      } else if (
-        result.status === 401 &&
-        result.error &&
-        result.error.toLowerCase().includes('verification email')
-      ) {
-        // Show custom modal for email verification failure
-        setShowEmailErrorModal(true);
       } else {
-        setError(result.error || 'Sign up failed. Please try again.');
-        Alert.alert('Error', result.error || 'Sign up failed. Please try again.');
+        const rawError = result.error || 'Sign up failed. Please try again.';
+        const errorLower = rawError.toLowerCase();
+
+        // Check if this is a duplicate email scenario
+        if (errorLower.includes('email already registered')) {
+          setError('This email is already registered. Please sign in or reset your password.');
+          Alert.alert(
+            'Email Already Registered',
+            'This email is already registered. Would you like to sign in instead?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Sign In', onPress: () => navigation.navigate('SignIn', { prefillEmail: email.trim().toLowerCase() }) }
+            ]
+          );
+        } else if (errorLower.includes('verification email') || errorLower.includes('failed to send')) {
+          // Email sending failed - show retry modal
+          setShowEmailErrorModal(true);
+        } else if (errorLower.includes('error while signup') || result.status === 500) {
+          // Backend sent OTP but user creation failed - still show OTP modal
+          // This handles the case where OTP was sent but duplicate constraint or other DB error occurred
+          console.log('⚠️ Signup error after OTP likely sent:', rawError);
+          setShowOTPModal(true);
+          setError(''); // Don't show error, let user try to verify
+          // Show informative alert
+          Alert.alert(
+            'Verification Email Sent',
+            'An OTP has been sent to your email. If you already have an account, please sign in instead.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          // Other errors
+          setError(rawError);
+          Alert.alert('Signup Error', rawError);
+        }
       }
     } catch (err) {
       // Handle unexpected errors

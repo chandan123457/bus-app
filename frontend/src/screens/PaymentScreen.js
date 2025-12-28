@@ -49,6 +49,7 @@ const checkPaymentEnvironment = () => {
 
 const PaymentScreen = ({ navigation, route }) => {
   const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
+  const [userEmail, setUserEmail] = useState('');
 
   const getCachedUserEmail = async () => {
     try {
@@ -161,9 +162,9 @@ const PaymentScreen = ({ navigation, route }) => {
         order_id: paymentData.orderId,
         name: 'Bus Booking',
         prefill: {
-          email: contactDetails?.email || passengers?.[0]?.email || '',
-          contact: contactDetails?.phone || '',
-          name: passengers?.[0]?.name || ''
+          email: primaryPassenger?.email || '',
+          contact: primaryPassenger?.phone || '',
+          name: primaryPassenger?.name || ''
         },
         theme: { color: '#2B636E' }
       };
@@ -208,7 +209,24 @@ const PaymentScreen = ({ navigation, route }) => {
   console.log('Full route.params:', JSON.stringify(route.params, null, 2));
   console.log('==========================================');
   
-  const { busData, selectedSeats = [], passengers = [], contactDetails = {} } = route.params;
+  const { busData, selectedSeats = [], passengers = [] } = route.params;
+
+  useEffect(() => {
+    getCachedUserEmail().then((email) => setUserEmail(email || ''));
+  }, []);
+
+  const primaryPassenger = {
+    ...(passengers?.[0] || {}),
+    email: passengers?.[0]?.email || userEmail,
+    phone: passengers?.[0]?.phone || '',
+  };
+  const boardingPoint = route.params?.boardingPoint || busData?.boardingPoint || busData?.tripData?.fromStop?.boardingPoints?.[0];
+  const droppingPoint = route.params?.droppingPoint || busData?.droppingPoint || busData?.tripData?.toStop?.boardingPoints?.[0];
+
+  const getPointLabel = (point, fallback) =>
+    point?.name || point?.locationName || point?.location || point?.address || point?.stopName || fallback;
+
+  const getPointTime = (point) => point?.time || point?.departureTime || point?.arrivalTime || '';
 
   // State for actual selected seats with fallback recovery
   const [actualSelectedSeats, setActualSelectedSeats] = useState(selectedSeats);
@@ -217,9 +235,10 @@ const PaymentScreen = ({ navigation, route }) => {
     busData: !!busData,
     selectedSeatsCount: actualSelectedSeats.length,
     passengersCount: passengers.length,
-    contactDetails: !!contactDetails,
     selectedSeats: actualSelectedSeats,
     passengers: passengers,
+    boardingPoint: !!boardingPoint,
+    droppingPoint: !!droppingPoint,
   });
 
   // Try to recover selectedSeats from AsyncStorage if empty
@@ -254,12 +273,14 @@ const PaymentScreen = ({ navigation, route }) => {
     }
   }, []);
 
-  // Calculate fare - use actualSelectedSeats or fallback
+  // Calculate fare - align UI with the selected trip's price
+  // NOTE: the actual amount charged is determined by backend `/user/payments/initiate`.
   const seatCount = actualSelectedSeats.length > 0 ? actualSelectedSeats.length : 1; // Default to 1 seat minimum
-  const baseFare = seatCount * 520; // Example: ₹520 per seat
-  const gst = Math.round(baseFare * 0.12);
-  const serviceFee = 22;
-  const originalAmount = baseFare + gst + serviceFee;
+  const perSeatFare = Number(busData?.price) || Number(busData?.tripData?.price) || 0;
+  const baseFare = seatCount * perSeatFare;
+  const gst = 0;
+  const serviceFee = 0;
+  const originalAmount = baseFare;
 
   // Payment method state - Only Razorpay and eSewa
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('RAZORPAY');
@@ -367,6 +388,12 @@ const PaymentScreen = ({ navigation, route }) => {
 
       setAuthToken(token);
 
+      const fallbackEmail = userEmail || (await getCachedUserEmail()) || '';
+      if (!fallbackEmail) {
+        Alert.alert('Email Required', 'Please add an email in your profile to complete the booking.');
+        return;
+      }
+
       // Get actual data from route params 
       const actualSeatIds = actualSelectedSeats?.map(seat => seat.id).filter(Boolean) || [];
       
@@ -377,20 +404,18 @@ const PaymentScreen = ({ navigation, route }) => {
         age: passenger.age,
         gender: passenger.gender,
         phone: passenger.phone || '',
-        email: passenger.email,
+        email: passenger.email || fallbackEmail,
       })) || [];
 
       console.log('Extracted seat IDs:', actualSeatIds);
       console.log('Processed passengers:', actualPassengers);
 
       // Extract boarding and dropping points from the trip data or route params
-      const actualBoardingPointId = contactDetails?.boardingPointId || 
-        route.params?.boardingPoint?.id ||
+      const actualBoardingPointId = route.params?.boardingPoint?.id ||
         busData.tripData?.fromStop?.boardingPoints?.[0]?.id || 
         '12345678-1234-5678-9abc-123456789abe';
       
-      const actualDroppingPointId = contactDetails?.droppingPointId || 
-        route.params?.droppingPoint?.id ||
+      const actualDroppingPointId = route.params?.droppingPoint?.id ||
         busData.tripData?.toStop?.boardingPoints?.[0]?.id || 
         '12345678-1234-5678-9abc-123456789abf';
 
@@ -435,8 +460,8 @@ const PaymentScreen = ({ navigation, route }) => {
       if (!paymentData.passengers.length) {
         throw new Error('Passengers data is missing');
       }
-      if (paymentData.passengers.some(p => !p.seatId || !p.email || !p.name)) {
-        throw new Error('Some passenger information is incomplete (missing seat ID, email, or name)');
+      if (paymentData.passengers.some(p => !p.seatId || !p.name)) {
+        throw new Error('Some passenger information is incomplete (missing seat ID or name)');
       }
 
       // Initiate payment with backend
@@ -1070,6 +1095,31 @@ const PaymentScreen = ({ navigation, route }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Boarding & Dropping Details */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Trip Details</Text>
+
+          <View style={styles.fareRow}>
+            <Text style={styles.fareLabel}>Boarding Point</Text>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.fareAmount}>{getPointLabel(boardingPoint, 'Not selected')}</Text>
+              {getPointTime(boardingPoint) ? (
+                <Text style={styles.subtleText}>{getPointTime(boardingPoint)}</Text>
+              ) : null}
+            </View>
+          </View>
+
+          <View style={styles.fareRow}>
+            <Text style={styles.fareLabel}>Dropping Point</Text>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.fareAmount}>{getPointLabel(droppingPoint, 'Not selected')}</Text>
+              {getPointTime(droppingPoint) ? (
+                <Text style={styles.subtleText}>{getPointTime(droppingPoint)}</Text>
+              ) : null}
+            </View>
+          </View>
+        </View>
+
         {/* Payment Details Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Payment Details</Text>
@@ -1079,18 +1129,6 @@ const PaymentScreen = ({ navigation, route }) => {
               Base Fare ({seatCount} seats)
             </Text>
             <Text style={styles.fareAmount}>₹ {baseFare}</Text>
-          </View>
-
-          {/* GST */}
-          <View style={styles.fareRow}>
-            <Text style={styles.fareLabel}>GST (12%)</Text>
-            <Text style={styles.fareAmount}>₹ {gst}</Text>
-          </View>
-
-          {/* Service Fee */}
-          <View style={styles.fareRow}>
-            <Text style={styles.fareLabel}>Service Fee</Text>
-            <Text style={styles.fareAmount}>₹ {serviceFee}</Text>
           </View>
 
           {/* Coupon Discount */}
@@ -1407,6 +1445,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1F2937',
     fontWeight: '600',
+  },
+  subtleText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
 
   // Divider

@@ -156,7 +156,7 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleNotifications = () => {
-    Alert.alert('Notifications', 'Mobile notifications are coming soon.');
+    navigation.navigate('Notifications');
   };
 
   const handleLogout = useCallback(() => {
@@ -216,6 +216,8 @@ const ProfileScreen = ({ navigation }) => {
       setSaving(false);
     }
   };
+
+
 
   const travelerName = profile?.name || 'Traveler';
   const avatarInitial = travelerName.charAt(0).toUpperCase();
@@ -481,24 +483,24 @@ const ProfileScreen = ({ navigation }) => {
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Home')} activeOpacity={0.7}>
-          <HomeIconNav />
+          <HomeIconNav active={false} />
           <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Bookings')} activeOpacity={0.7}>
-          <BookingsIconNav />
+          <BookingsIconNav active={false} />
           <Text style={styles.navLabel}>Bookings</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Offers')} activeOpacity={0.7}>
-          <OffersIconNav />
+          <OffersIconNav active={false} />
           <Text style={styles.navLabel}>Offers</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleBottomNav('Support')} activeOpacity={0.7}>
-          <SupportIconNav />
+          <SupportIconNav active={false} />
           <Text style={styles.navLabel}>Support</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} activeOpacity={0.7}>
-          <ProfileIconNav active />
-          <Text style={styles.navLabel}>Profile</Text>
+          <ProfileIconNav active={true} />
+          <Text style={[styles.navLabel, styles.navLabelActive]}>Profile</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -559,6 +561,10 @@ const styles = StyleSheet.create({
     gap: 10,
     borderWidth: 1,
     borderColor: '#FECACA',
+    navLabelActive: {
+      color: '#FFFFFF',
+      fontWeight: '500',
+    },
   },
   errorText: {
     flex: 1,
@@ -578,10 +584,11 @@ const styles = StyleSheet.create({
   },
   avatarCard: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 18,
+    gap: 12,
     shadowColor: '#0F172A',
     shadowOpacity: 0.08,
     shadowRadius: 20,
@@ -604,6 +611,7 @@ const styles = StyleSheet.create({
   },
   avatarMeta: {
     flex: 1,
+    gap: 2,
   },
   avatarName: {
     fontSize: 18,
@@ -612,7 +620,9 @@ const styles = StyleSheet.create({
   },
   avatarEmail: {
     color: '#64748B',
-    marginTop: 4,
+    marginTop: 2,
+    lineHeight: 16,
+    flexShrink: 1,
   },
   verificationPill: {
     flexDirection: 'row',
@@ -621,6 +631,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    alignSelf: 'flex-start',
+    marginTop: 6,
   },
   verificationPillSuccess: {
     backgroundColor: 'rgba(16, 185, 129, 0.15)',

@@ -239,7 +239,7 @@ const HomeScreen = ({ navigation }) => {
 
   const handleQuickAction = (action) => {
     console.log('Quick action:', action);
-    setActiveTab(action);
+    handleBottomNav(action);
   };
 
   const handleBottomNav = (tab) => {
@@ -308,8 +308,12 @@ const HomeScreen = ({ navigation }) => {
           </SafeAreaView>
         </ImageBackground>
 
-        {/* Main Content - Static Layout */}
-        <View style={styles.mainContent}>
+        {/* Main Content - Scrollable Layout */}
+        <ScrollView 
+          style={styles.mainContent}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Main Booking Card */}
           <View style={styles.bookingCard}>
               <Text style={styles.bookingTitle}>Book Your Journey</Text>
@@ -443,7 +447,7 @@ const HomeScreen = ({ navigation }) => {
               <PercentIcon />
             </View>
           </View>
-        </View>
+        </ScrollView>
 
         {/* Bottom Navigation Bar */}
         <View style={styles.bottomNav}>
@@ -452,8 +456,8 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => handleBottomNav('Home')}
             activeOpacity={0.7}
           >
-            <HomeIconNav active={activeTab === 'Home'} />
-            <Text style={[styles.navLabel, activeTab === 'Home' && styles.navLabelActive]}>
+            <HomeIconNav active={true} />
+            <Text style={[styles.navLabel, styles.navLabelActive]}>
               Home
             </Text>
           </TouchableOpacity>
@@ -463,8 +467,8 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => handleBottomNav('Bookings')}
             activeOpacity={0.7}
           >
-            <BookingsIconNav active={activeTab === 'Bookings'} />
-            <Text style={[styles.navLabel, activeTab === 'Bookings' && styles.navLabelActive]}>
+            <BookingsIconNav active={false} />
+            <Text style={styles.navLabel}>
               Bookings
             </Text>
           </TouchableOpacity>
@@ -474,8 +478,8 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => handleBottomNav('Offers')}
             activeOpacity={0.7}
           >
-            <OffersIconNav active={activeTab === 'Offers'} />
-            <Text style={[styles.navLabel, activeTab === 'Offers' && styles.navLabelActive]}>
+            <OffersIconNav active={false} />
+            <Text style={styles.navLabel}>
               Offers
             </Text>
           </TouchableOpacity>
@@ -485,8 +489,8 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => handleBottomNav('Support')}
             activeOpacity={0.7}
           >
-            <SupportIconNav active={activeTab === 'Support'} />
-            <Text style={[styles.navLabel, activeTab === 'Support' && styles.navLabelActive]}>
+            <SupportIconNav active={false} />
+            <Text style={styles.navLabel}>
               Support
             </Text>
           </TouchableOpacity>
@@ -496,8 +500,8 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => handleBottomNav('Profile')}
             activeOpacity={0.7}
           >
-            <ProfileIconNav active={activeTab === 'Profile'} />
-            <Text style={[styles.navLabel, activeTab === 'Profile' && styles.navLabelActive]}>
+            <ProfileIconNav active={false} />
+            <Text style={styles.navLabel}>
               Profile
             </Text>
           </TouchableOpacity>
@@ -589,7 +593,11 @@ const styles = StyleSheet.create({
 
   // Main content
   mainContent: {
-    paddingBottom: 78,
+    flex: 1,
+  },
+
+  scrollContent: {
+    paddingBottom: 90, // Extra padding for bottom navigation
   },
 
   // Booking card

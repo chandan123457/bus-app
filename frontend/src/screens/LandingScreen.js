@@ -26,6 +26,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { COLORS, SPACING } from '../constants/theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -41,11 +42,31 @@ const LandingScreen = ({ navigation }) => {
    * Auto-navigation to SignIn after splash delay
    */
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.replace('SignIn');
-    }, 2500);
-    
-    return () => clearTimeout(timer);
+    let isActive = true;
+
+    const bootstrap = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        if (token && isActive) {
+          navigation.replace('Home');
+          return;
+        }
+      } catch (err) {
+        console.warn('Auth bootstrap failed, falling back to SignIn:', err?.message);
+      }
+
+      if (isActive) {
+        setTimeout(() => {
+          if (isActive) navigation.replace('SignIn');
+        }, 1200);
+      }
+    };
+
+    bootstrap();
+
+    return () => {
+      isActive = false;
+    };
   }, [navigation]);
 
   return (

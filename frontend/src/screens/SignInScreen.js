@@ -144,8 +144,11 @@ const SignInScreen = ({ navigation, route }) => {
         
         console.log('Sign in successful, stored token and user data');
         
-        // Sign in successful - navigate to Home
-        navigation.navigate('Home');
+        // Sign in successful - reset navigation so Home becomes the root
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
       } else {
         // Show error message from API
         const errorMessage = result.error || 'Sign in failed. Please try again.';

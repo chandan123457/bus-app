@@ -79,6 +79,7 @@ const HelpSupportScreen = ({ navigation }) => {
     }
   };
 
+
   const handleCategoryPress = (category) => {
     console.log('Category pressed:', category.name);
     // Add navigation to category details when needed

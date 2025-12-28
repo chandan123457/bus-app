@@ -326,6 +326,106 @@ export const userAPI = {
   },
 
   /**
+   * Notifications
+   */
+  getNotifications: async (token, { unreadOnly = false, limit = 50 } = {}) => {
+    if (!token) {
+      return { success: false, error: 'Authentication required', status: 401 };
+    }
+
+    try {
+      const response = await api.get(API_ENDPOINTS.NOTIFICATIONS, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { unreadOnly, limit },
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        message: response.data.message || 'Notifications fetched successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Failed to fetch notifications',
+        status: error.response?.status,
+      };
+    }
+  },
+
+  getUnreadNotificationCount: async (token) => {
+    if (!token) {
+      return { success: false, error: 'Authentication required', status: 401 };
+    }
+
+    try {
+      const response = await api.get(API_ENDPOINTS.NOTIFICATIONS_UNREAD_COUNT, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        message: 'Unread count fetched successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Failed to fetch unread count',
+        status: error.response?.status,
+      };
+    }
+  },
+
+  markNotificationAsRead: async (notificationId, token) => {
+    if (!token) {
+      return { success: false, error: 'Authentication required', status: 401 };
+    }
+
+    try {
+      const response = await api.patch(`${API_ENDPOINTS.NOTIFICATION_READ}/${notificationId}/read`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        message: response.data.message || 'Notification updated',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Failed to update notification',
+        status: error.response?.status,
+      };
+    }
+  },
+
+  markAllNotificationsRead: async (token) => {
+    if (!token) {
+      return { success: false, error: 'Authentication required', status: 401 };
+    }
+
+    try {
+      const response = await api.patch(API_ENDPOINTS.NOTIFICATION_READ_ALL, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        message: response.data.message || 'All notifications marked as read',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.errorMessage || error.message || 'Failed to update notifications',
+        status: error.response?.status,
+      };
+    }
+  },
+
+  /**
    * Fetch bookings for the current user
    * @param {Object} filters - { status, upcoming, page, limit }
    * @param {string} token - JWT token
