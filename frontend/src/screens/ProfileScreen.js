@@ -321,7 +321,7 @@ const ProfileScreen = ({ navigation }) => {
           </View>
           <View style={styles.avatarMeta}>
             <Text style={styles.avatarName}>{travelerName}</Text>
-            <Text style={styles.avatarEmail}>{profile?.email || 'Add your email'}</Text>
+            <Text style={styles.avatarEmail} numberOfLines={1} ellipsizeMode="tail">{profile?.email || 'Add your email'}</Text>
           </View>
           <View style={[
             styles.verificationPill,
@@ -543,8 +543,9 @@ const styles = StyleSheet.create({
   },
   avatarEmail: {
     color: '#64748B',
-    marginTop: 2,
-    lineHeight: 16,
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 18,
     flexShrink: 1,
   },
   verificationPill: {

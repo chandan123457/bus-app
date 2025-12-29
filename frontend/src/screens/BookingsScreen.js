@@ -241,9 +241,26 @@ const BookingsScreen = ({ navigation }) => {
 
       setDownloadingId(booking.bookingGroupId);
       const downloadUrl = buildDownloadUrl(booking.bookingGroupId);
-      const directory = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+      
+      // Use cacheDirectory as primary, fallback to documentDirectory
+      let directory = FileSystem.cacheDirectory;
       if (!directory) {
-        throw new Error('Storage directory not available');
+        directory = FileSystem.documentDirectory;
+      }
+      
+      if (!directory) {
+        // Last resort: try to get storage info
+        const storageInfo = await FileSystem.getInfoAsync(FileSystem.cacheDirectory || FileSystem.documentDirectory);
+        if (!storageInfo.exists) {
+          throw new Error('Storage directory not available. Please check app permissions.');
+        }
+        directory = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+      }
+
+      // Ensure directory exists
+      const dirInfo = await FileSystem.getInfoAsync(directory);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
       }
 
       const fileUri = `${directory}ticket-${booking.bookingGroupId}.pdf`;
@@ -392,16 +409,16 @@ const BookingsScreen = ({ navigation }) => {
 
         <View style={styles.metaRow}>
           <View style={styles.metaColumn}>
-            <Text style={styles.metaLabel}>Passengers</Text>
+            <Text style={styles.metaLabel} numberOfLines={1}>Passengers</Text>
             <Text style={styles.metaValue}>{passengersLabel}</Text>
           </View>
           <View style={styles.metaColumn}>
-            <Text style={styles.metaLabel}>Seat No.</Text>
+            <Text style={styles.metaLabel} numberOfLines={1}>Seat No.</Text>
             <Text style={styles.metaValue}>{seatLabel}</Text>
           </View>
           <View style={styles.metaColumnAmount}>
-            <Text style={styles.metaLabel}>Amount</Text>
-            <Text style={styles.metaValue}>{formatCurrency(booking.finalPrice ?? booking.totalPrice, booking.payment?.currency)}</Text>
+            <Text style={[styles.metaLabel, styles.metaLabelRight]} numberOfLines={1}>Amount</Text>
+            <Text style={[styles.metaValue, styles.metaValueRight]}>{formatCurrency(booking.finalPrice ?? booking.totalPrice, booking.payment?.currency)}</Text>
           </View>
         </View>
 
@@ -445,30 +462,10 @@ const BookingsScreen = ({ navigation }) => {
             {downloadingId === booking.bookingGroupId ? (
               <ActivityIndicator size="small" color="#1D4ED8" />
             ) : (
-              <MaterialCommunityIcons name="download" size={18} color="#1D4ED8" />
+              <MaterialCommunityIcons name="download" size={16} color="#1D4ED8" />
             )}
             <Text style={styles.primaryActionText}>{canDownload ? 'Download Ticket' : 'Ticket Unavailable'}</Text>
           </TouchableOpacity>
-
-          {isCancellable ? (
-            <TouchableOpacity
-              style={styles.secondaryAction}
-              onPress={() => confirmCancelBooking(booking)}
-              activeOpacity={0.8}
-              disabled={cancellingId === booking.bookingGroupId}
-            >
-              {cancellingId === booking.bookingGroupId ? (
-                <ActivityIndicator size="small" color="#B91C1C" />
-              ) : (
-                <MaterialCommunityIcons name="cancel" size={18} color="#B91C1C" />
-              )}
-              <Text style={styles.secondaryActionText}>Cancel Trip</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.secondaryGhostAction} onPress={() => navigation.navigate('Home')} activeOpacity={0.8}>
-              <Text style={styles.secondaryGhostText}>Book Again</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
     );
@@ -754,30 +751,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#F8FAFC',
     borderRadius: 12,
-    padding: 12,
+    padding: 16,
     marginBottom: 16,
-    justifyContent: 'space-between',
+    gap: 20,
+    alignItems: 'flex-start',
   },
   metaColumn: {
     flex: 1,
     alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    minWidth: 0,
   },
   metaColumnAmount: {
     flex: 1,
     alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    minWidth: 0,
   },
   metaLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#64748B',
-    marginBottom: 4,
+    marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     fontWeight: '600',
+    width: '100%',
+    textAlign: 'left',
+  },
+  metaLabelRight: {
+    textAlign: 'right',
   },
   metaValue: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: '#0F172A',
+    width: '100%',
+    textAlign: 'left',
+    lineHeight: 18,
+    flexWrap: 'wrap',
+  },
+  metaValueRight: {
+    textAlign: 'right',
   },
   boardingCard: {
     backgroundColor: '#FFFFFF',
@@ -833,19 +847,21 @@ const styles = StyleSheet.create({
   },
   primaryAction: {
     flex: 1,
-    backgroundColor: '#FFFFFF', // Changed to white for better contrast if border is used, or keep blue
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     paddingVertical: 12,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1.5, // Added border
-    borderColor: '#1D4ED8', // Blue border
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#1D4ED8',
   },
   primaryActionText: {
-    color: '#1D4ED8', // Changed text color to blue
-    fontWeight: '700',
+    color: '#1D4ED8',
+    fontWeight: '600',
+    fontSize: 13,
   },
   secondaryAction: {
     flex: 1,
