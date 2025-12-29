@@ -130,7 +130,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
         arrivalTime: toStop?.arrivalTime || '16:00',
         duration: duration,
         price: basePrice,
-        rating: parseFloat(bus.rating) || (4.0 + Math.random() * 1),
+        rating: Math.floor(parseFloat(bus.rating) || (4.0 + Math.random() * 1)),
         amenities: bus.amenities || ['WiFi', 'AC', 'Charging'],
         availableSeats: trip.availableSeats || Math.floor(Math.random() * 30) + 10,
         busNumber: bus.busNumber || `BUS${String(index + 1).padStart(3, '0')}`,
