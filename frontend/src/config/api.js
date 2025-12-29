@@ -14,11 +14,10 @@
  */
 
 // Backend URL configuration
-// For development with mobile device, use your local IP address
-// For production APK, use your deployed backend URL
-const API_BASE_URL = __DEV__ 
-  ? 'http://192.168.27.60:3000'  // Development: local IP for testing
-  : 'https://gantabya-44tr.onrender.com';  // Production: Render backend URL
+// Use the same IP that Metro/Expo shows (your computer's IP on WiFi)
+// Currently using: 192.168.22.4 (from Metro: exp://192.168.22.4:8081)
+// If your IP changes, update only this line.
+const API_BASE_URL = 'http://192.168.22.4:3000';  // Development: local IP for testing
 
 // Log API URL in development for debugging
 if (__DEV__) {

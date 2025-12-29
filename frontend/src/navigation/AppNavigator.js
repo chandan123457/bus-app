@@ -11,16 +11,12 @@ import LandingScreen from '../screens/LandingScreen';
 import SignInScreen from '../screens/SignInScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-import HomeScreen from '../screens/HomeScreen';
+import TabNavigator from './TabNavigator';
 import BusSearchResultsScreen from '../screens/BusSearchResultsScreen';
 import SeatSelectionScreen from '../screens/SeatSelectionScreen';
 import SeatSelectionDuplicate from '../screens/SeatSelectionDuplicate';
 import PassengerInformation from '../screens/PassengerInformation';
 import PaymentScreen from '../screens/PaymentScreen';
-import BookingsScreen from '../screens/BookingsScreen';
-import OffersScreen from '../screens/OffersScreen';
-import HelpSupportScreen from '../screens/HelpSupportScreen';
-import ProfileScreen from '../screens/ProfileScreen';
 import BoardingPointsScreen from '../screens/BoardingPointsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 
@@ -77,10 +73,10 @@ const AppNavigator = () => {
           }}
         />
 
-        {/* Home / Dashboard Screen */}
+        {/* Main Tab Navigator (Home, Bookings, Offers, Support, Profile) */}
         <Stack.Screen 
           name="Home" 
-          component={HomeScreen}
+          component={TabNavigator}
           options={{
             animation: 'slide_from_right',
           }}
@@ -135,42 +131,6 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="Payment" 
           component={PaymentScreen}
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-
-        {/* Bookings Screen */}
-        <Stack.Screen 
-          name="Bookings" 
-          component={BookingsScreen}
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-
-        {/* Offers Screen */}
-        <Stack.Screen 
-          name="Offers" 
-          component={OffersScreen}
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-
-        {/* Help & Support Screen */}
-        <Stack.Screen 
-          name="HelpSupport" 
-          component={HelpSupportScreen}
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-
-        {/* Profile Screen */}
-        <Stack.Screen 
-          name="Profile" 
-          component={ProfileScreen}
           options={{
             animation: 'slide_from_right',
           }}
