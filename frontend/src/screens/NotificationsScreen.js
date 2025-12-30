@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   StatusBar,
+  ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -180,24 +181,33 @@ const NotificationsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="arrow-left" size={22} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Notifications</Text>
-          <View style={styles.unreadBadge}>
-            <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
-          </View>
-        </View>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      
+      {/* Header with background image */}
+      <View style={styles.headerSection}>
+        <ImageBackground
+          source={require('../../assets/landing-background.jpg')}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        >
+          <View style={styles.overlay} />
+          <SafeAreaView edges={['top']} style={styles.safeArea}>
+            <View style={styles.headerRow}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+                <MaterialCommunityIcons name="arrow-left" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Notifications</Text>
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+              </View>
+            </View>
 
-        <View style={styles.subHeaderRow}>
-          <Text style={styles.subHeaderText}>You have {unreadCount} unread notifications</Text>
-          <TouchableOpacity
-            onPress={handleMarkAll}
-            disabled={markingAll || unreadCount === 0}
-            style={[styles.markAllBtn, (markingAll || unreadCount === 0) && styles.markAllBtnDisabled]}
+            <View style={styles.subHeaderRow}>
+              <Text style={styles.subHeaderText}>You have {unreadCount} unread notifications</Text>
+              <TouchableOpacity
+                onPress={handleMarkAll}
+                disabled={markingAll || unreadCount === 0}
+                style={[styles.markAllBtn, (markingAll || unreadCount === 0) && styles.markAllBtnDisabled]}
             activeOpacity={0.7}
           >
             {markingAll ? (
@@ -207,36 +217,41 @@ const NotificationsScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+          </SafeAreaView>
+        </ImageBackground>
+      </View>
 
-      {loading ? (
-        <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color="#2563EB" />
-          <Text style={styles.loadingText}>Loading notifications...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.errorBox}>
-          <MaterialCommunityIcons name="alert-circle" size={20} color="#DC2626" />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity onPress={fetchNotifications} style={styles.retryBtn} activeOpacity={0.8}>
-            <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {notifications.length === 0 ? (
-            <Text style={styles.emptyText}>No notifications yet.</Text>
-          ) : (
-            notifications.map((notification) => (
-              <NotificationCard
-                key={notification.id}
-                notification={notification}
-                onMarkRead={handleMarkRead}
-              />
-            ))
-          )}
-        </ScrollView>
-      )}
+      {/* Content area */}
+      <View style={styles.contentArea}>
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color="#2563EB" />
+            <Text style={styles.loadingText}>Loading notifications...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorBox}>
+            <MaterialCommunityIcons name="alert-circle" size={20} color="#DC2626" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={fetchNotifications} style={styles.retryBtn} activeOpacity={0.8}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+            {notifications.length === 0 ? (
+              <Text style={styles.emptyText}>No notifications yet.</Text>
+            ) : (
+              notifications.map((notification) => (
+                <NotificationCard
+                  key={notification.id}
+                  notification={notification}
+                  onMarkRead={handleMarkRead}
+                />
+              ))
+            )}
+          </ScrollView>
+        )}
+      </View>
     </View>
   );
 };
@@ -244,13 +259,28 @@ const NotificationsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F5F7F9',
+  },
+  headerSection: {
+    height: 160,
+    paddingBottom: 20,
+  },
+  backgroundImage: {
+    height: '100%',
+    width: '100%',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(44, 95, 111, 0.80)',
+  },
+  contentArea: {
+    flex: 1,
   },
   safeArea: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 20,
+    flex: 1,
+    justifyContent: 'center',
+
   },
   headerRow: {
     flexDirection: 'row',
@@ -266,10 +296,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: '#FFFFFF',
   },
   unreadBadge: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
@@ -277,7 +307,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   unreadBadgeText: {
-    color: '#FFFFFF',
+    color: '#2563EB',
     fontWeight: '700',
   },
   subHeaderRow: {

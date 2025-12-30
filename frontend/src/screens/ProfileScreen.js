@@ -30,7 +30,7 @@ const formatDate = (value) => {
   if (Number.isNaN(parsed.getTime())) {
     return '—';
   }
-  return parsed.toLocaleDateString('en-IN', {
+  return parsed.toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -443,17 +443,15 @@ const ProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'transparent',
   },
   heroSection: {
-    paddingBottom: 0,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    overflow: 'hidden',
+    height: 160,
+    paddingBottom: 20,
   },
   heroBackground: {
     width: '100%',
-    paddingBottom: 24,
+    height: '100%',
   },
   heroBackgroundImage: {
     borderBottomLeftRadius: 32,
@@ -462,12 +460,12 @@ const styles = StyleSheet.create({
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    opacity: 0.85,
+    backgroundColor: 'rgba(44, 95, 111, 0.80)',
   },
   heroInner: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
+    flex: 1,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
   },
   heroBrandRow: {
     flexDirection: 'row',
@@ -541,6 +539,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
+    marginTop: -20,
   },
   avatarCircle: {
     width: 56,
