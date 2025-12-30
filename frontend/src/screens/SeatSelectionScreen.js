@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { busAPI } from '../services/api';
+import { COLORS } from '../constants/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -25,6 +26,8 @@ const SeatSelectionScreen = ({ navigation, route }) => {
   const { busData } = route.params;
   const priceNpr = Number(busData?.priceNpr ?? busData?.price ?? busData?.tripData?.fare ?? busData?.tripData?.price ?? 0);
   const priceInr = convertNprToInr(priceNpr);
+
+  const [selectedDeck, setSelectedDeck] = useState('LOWER');
   
   // States for API data
   const [isLoading, setIsLoading] = useState(true);
@@ -148,6 +151,8 @@ const SeatSelectionScreen = ({ navigation, route }) => {
               level: seat.level,
               row: seat.row,
               column: seat.column,
+              rowSpan: seat.rowSpan,
+              columnSpan: seat.columnSpan,
               isAvailable: seat.isAvailable
             };
           });
@@ -165,6 +170,8 @@ const SeatSelectionScreen = ({ navigation, route }) => {
               level: seat.level,
               row: seat.row,
               column: seat.column,
+              rowSpan: seat.rowSpan,
+              columnSpan: seat.columnSpan,
               isAvailable: seat.isAvailable
             };
           });
@@ -213,94 +220,138 @@ const SeatSelectionScreen = ({ navigation, route }) => {
   const getSeatStyle = (state) => {
     switch(state) {
       case 'selected':
-        return { backgroundColor: '#2D9B9B', borderColor: '#2D9B9B' };
+        return { backgroundColor: COLORS.success, borderColor: COLORS.success };
       case 'booked':
-        return { backgroundColor: '#2C2C2C', borderColor: '#2C2C2C' };
+        return { backgroundColor: COLORS.error, borderColor: COLORS.error };
       default:
-        return { backgroundColor: '#E8E8E8', borderColor: '#E8E8E8' };
+        return { backgroundColor: COLORS.white, borderColor: COLORS.grayLight };
     }
   };
 
   const getSeatTextStyle = (state) => {
     return state === 'available' 
-      ? { color: '#2C2C2C' } 
-      : { color: '#FFFFFF' };
+      ? { color: COLORS.textPrimary } 
+      : { color: COLORS.textWhite };
   };
 
-  const renderSeat = (seat, state) => (
-    <TouchableOpacity
-      key={seat.id} // Use unique seat ID as key instead of seatNumber
-      style={[styles.seat, getSeatStyle(state)]}
-      onPress={() => handleSeatPress(seat.id)} // Use seat ID for state management
-      disabled={state === 'booked'}
-      activeOpacity={0.7}
-    >
-      <Text style={[styles.seatText, getSeatTextStyle(state)]}>
-        {seat.seatNumber}
-      </Text>
-    </TouchableOpacity>
-  );
+  const renderSeat = (seat, state, layout) => {
+    const isSleeper = String(seat?.type || '').toUpperCase().includes('SLEEPER');
+    const rowSpan = Number(seat?.rowSpan || 1);
+    const columnSpan = Number(seat?.columnSpan || 1);
 
-  // Render seats dynamically from backend data instead of hardcoded grid
-  const renderDynamicSeats = () => {
+    const normalizedRow = Number(seat?.row) - layout.startRow;
+    const normalizedCol = Number(seat?.column) - layout.startCol;
+
+    const left = normalizedCol * (layout.cell + layout.gap);
+    const top = normalizedRow * (layout.cell + layout.gap);
+
+    const width = (columnSpan * layout.cell) + ((columnSpan - 1) * layout.gap);
+    const height = (rowSpan * layout.cell) + ((rowSpan - 1) * layout.gap);
+
+    const iconSize = isSleeper ? 22 : 18;
+    const seatTextColor = state === 'available' ? COLORS.textPrimary : COLORS.textWhite;
+
+    return (
+      <TouchableOpacity
+        key={seat.id}
+        style={[
+          styles.seatItem,
+          { left, top, width, height },
+          isSleeper ? styles.seatItemSleeper : styles.seatItemSeater,
+          getSeatStyle(state),
+        ]}
+        onPress={() => handleSeatPress(seat.id)}
+        disabled={state === 'booked'}
+        activeOpacity={0.7}
+      >
+        <MaterialCommunityIcons
+          name={isSleeper ? 'bed' : 'seat'}
+          size={iconSize}
+          color={seatTextColor}
+        />
+        <Text style={[styles.seatNumberText, { color: seatTextColor }]} numberOfLines={1}>
+          {seat.seatNumber}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderSeatMap = () => {
     if (!busInfo?.seats) {
       return (
-        <View style={styles.seatsGrid}>
-          <Text style={{ textAlign: 'center', padding: 20, color: '#666' }}>
-            Loading seats...
-          </Text>
+        <View style={styles.seatMapEmpty}>
+          <Text style={styles.seatMapEmptyText}>Loading seats...</Text>
         </View>
       );
     }
 
-    const allSeats = [...(busInfo.seats.lowerDeck || []), ...(busInfo.seats.upperDeck || [])];
-    
-    if (allSeats.length === 0) {
+    const lowerSeats = busInfo.seats.lowerDeck || [];
+    const upperSeats = busInfo.seats.upperDeck || [];
+    const deckSeats = selectedDeck === 'UPPER' ? upperSeats : lowerSeats;
+
+    if (!deckSeats || deckSeats.length === 0) {
       return (
-        <View style={styles.seatsGrid}>
-          <Text style={{ textAlign: 'center', padding: 20, color: '#666' }}>
-            No seats available
-          </Text>
+        <View style={styles.seatMapEmpty}>
+          <Text style={styles.seatMapEmptyText}>No seats available</Text>
         </View>
       );
     }
 
-    // Group seats by row for layout
-    const seatsByRow = {};
-    allSeats.forEach(seat => {
-      const row = seat.row || 0;
-      if (!seatsByRow[row]) {
-        seatsByRow[row] = [];
-      }
-      seatsByRow[row].push(seat);
-    });
+    const rows = deckSeats.map((s) => Number(s.row)).filter((n) => Number.isFinite(n));
+    const cols = deckSeats.map((s) => Number(s.column)).filter((n) => Number.isFinite(n));
+    const minRow = Math.min(...rows);
+    const maxRow = Math.max(...rows.map((r, idx) => r + (Number(deckSeats[idx]?.rowSpan || 1) - 1)));
+    const minCol = Math.min(...cols);
+    const maxCol = Math.max(...cols.map((c, idx) => c + (Number(deckSeats[idx]?.columnSpan || 1) - 1)));
 
-    // Sort rows and render
-    const sortedRows = Object.keys(seatsByRow).sort((a, b) => parseInt(a) - parseInt(b));
-    
+    const gridRows = Number(busInfo?.bus?.gridRows);
+    const gridCols = Number(busInfo?.bus?.gridColumns);
+
+    // Heuristic to handle both 0-based and 1-based seat coordinates.
+    const startRow = (Number.isFinite(gridRows) && gridRows > 0 && minRow >= 0 && maxRow < gridRows)
+      ? 0
+      : minRow;
+    const startCol = (Number.isFinite(gridCols) && gridCols > 0 && minCol >= 0 && maxCol < gridCols)
+      ? 0
+      : minCol;
+
+    const cell = 44;
+    const gap = 10;
+    const totalCols = (Number.isFinite(gridCols) && gridCols > 0) ? gridCols : (maxCol - startCol + 1);
+    const totalRows = (Number.isFinite(gridRows) && gridRows > 0) ? gridRows : (maxRow - startRow + 1);
+
+    const mapWidth = (totalCols * cell) + ((totalCols - 1) * gap);
+    const mapHeight = (totalRows * cell) + ((totalRows - 1) * gap);
+
+    const layout = { startRow, startCol, cell, gap };
+
     return (
-      <View style={styles.seatsGrid}>
-        {sortedRows.map(rowKey => {
-          const rowSeats = seatsByRow[rowKey].sort((a, b) => (a.column || 0) - (b.column || 0));
-          
-          return (
-            <View key={`row-${rowKey}`} style={styles.seatRow}>
-              <View style={styles.seatGroup}>
-                {rowSeats.slice(0, 2).map(seat => {
-                  const state = seatStates[seat.id] || 'available';
-                  return renderSeat(seat, state);
-                })}
-              </View>
-              <View style={styles.aisle} />
-              <View style={styles.seatGroup}>
-                {rowSeats.slice(2, 4).map(seat => {
-                  const state = seatStates[seat.id] || 'available';
-                  return renderSeat(seat, state);
-                })}
-              </View>
+      <View style={styles.busCanvasOuter}>
+        <View style={styles.busCanvasInner}>
+          <View style={styles.frontRow}>
+            <View style={styles.frontBadge}>
+              <Text style={styles.frontBadgeText}>← FRONT →</Text>
             </View>
-          );
-        })}
+            <View style={styles.driverBadge}>
+              <MaterialCommunityIcons name="steering" size={18} color={COLORS.secondary} />
+              <Text style={styles.driverBadgeText}>DRIVER</Text>
+            </View>
+          </View>
+
+          <View style={[styles.seatMap, { width: mapWidth, height: mapHeight }]}>
+            {deckSeats
+              .slice()
+              .sort((a, b) => (Number(a.row) - Number(b.row)) || (Number(a.column) - Number(b.column)))
+              .map((seat) => {
+                const state = seatStates[seat.id] || (seat.isAvailable ? 'available' : 'booked');
+                return renderSeat(seat, state, layout);
+              })}
+          </View>
+
+          <View style={styles.backBadge}>
+            <Text style={styles.backBadgeText}>BACK</Text>
+          </View>
+        </View>
       </View>
     );
   };
@@ -389,29 +440,86 @@ const SeatSelectionScreen = ({ navigation, route }) => {
           </View>
         </View>
 
+        {/* Lower/Upper Deck Selector */}
+        <View style={styles.deckSelectorContainer}>
+          <View style={styles.deckSelector}>
+            <TouchableOpacity
+              style={[styles.deckTab, selectedDeck === 'LOWER' && styles.deckTabActive]}
+              onPress={() => setSelectedDeck('LOWER')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.deckTabText, selectedDeck === 'LOWER' && styles.deckTabTextActive]}>Lower Deck</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.deckTab,
+                selectedDeck === 'UPPER' && styles.deckTabActive,
+                (!busInfo?.seats?.upperDeck || busInfo.seats.upperDeck.length === 0) && styles.deckTabDisabled,
+              ]}
+              onPress={() => setSelectedDeck('UPPER')}
+              activeOpacity={0.8}
+              disabled={!busInfo?.seats?.upperDeck || busInfo.seats.upperDeck.length === 0}
+            >
+              <Text
+                style={[
+                  styles.deckTabText,
+                  selectedDeck === 'UPPER' && styles.deckTabTextActive,
+                  (!busInfo?.seats?.upperDeck || busInfo.seats.upperDeck.length === 0) && styles.deckTabTextDisabled,
+                ]}
+              >
+                Upper Deck
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Seat Pricing */}
+        <View style={styles.seatPricingCard}>
+          <Text style={styles.seatPricingTitle}>Seat Pricing</Text>
+          {(() => {
+            const from = busInfo?.route?.fromStop || {};
+            const toStop = busInfo?.route?.toStop || {};
+            const lowerSeater = Math.abs(Number(toStop.lowerSeaterPrice || 0) - Number(from.lowerSeaterPrice || 0));
+            const lowerSleeper = Math.abs(Number(toStop.lowerSleeperPrice || 0) - Number(from.lowerSleeperPrice || 0));
+            const upperSleeper = Math.abs(Number(toStop.upperSleeperPrice || 0) - Number(from.upperSleeperPrice || 0));
+            return (
+              <View style={styles.seatPricingRow}>
+                <View style={styles.seatPricingCol}>
+                  <Text style={styles.seatPricingLabel}>Lower Seater</Text>
+                  <Text style={styles.seatPricingValue}>NPR {lowerSeater.toFixed(2)} (₹{convertNprToInr(lowerSeater).toFixed(2)})</Text>
+                </View>
+                <View style={styles.seatPricingCol}>
+                  <Text style={styles.seatPricingLabel}>Lower Sleeper</Text>
+                  <Text style={styles.seatPricingValue}>NPR {lowerSleeper.toFixed(2)} (₹{convertNprToInr(lowerSleeper).toFixed(2)})</Text>
+                </View>
+                <View style={styles.seatPricingCol}>
+                  <Text style={styles.seatPricingLabel}>Upper Sleeper</Text>
+                  <Text style={styles.seatPricingValue}>NPR {upperSleeper.toFixed(2)} (₹{convertNprToInr(upperSleeper).toFixed(2)})</Text>
+                </View>
+              </View>
+            );
+          })()}
+        </View>
+
         {/* Seat Status Legend - Direct on white background */}
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendBox, { backgroundColor: '#E8E8E8' }]} />
+            <View style={[styles.legendBox, { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.grayLight }]} />
             <Text style={styles.legendText}>Available</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendBox, { backgroundColor: '#2D9B9B' }]} />
+            <View style={[styles.legendBox, { backgroundColor: COLORS.success }]} />
             <Text style={styles.legendText}>Selected</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendBox, { backgroundColor: '#2C2C2C' }]} />
+            <View style={[styles.legendBox, { backgroundColor: COLORS.error }]} />
             <Text style={styles.legendText}>Booked</Text>
           </View>
         </View>
 
         {/* Seat Layout */}
         <View style={styles.seatLayoutContainer}>
-          {/* Steering Wheel / Driver Icon - Plain with transparent background */}
-          <MaterialCommunityIcons name="steering" size={28} color="#2C2C2C" style={styles.steeringIcon} />
-
-          {/* Dynamic Seats Grid based on actual backend data */}
-          {renderDynamicSeats()}
+          {renderSeatMap()}
         </View>
 
         {/* Bottom spacing for button */}
@@ -642,6 +750,81 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
+  // Deck selector
+  deckSelectorContainer: {
+    marginTop: 8,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  deckSelector: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 10,
+    padding: 3,
+  },
+  deckTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  deckTabActive: {
+    backgroundColor: COLORS.primary,
+  },
+  deckTabDisabled: {
+    opacity: 0.55,
+  },
+  deckTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  deckTabTextActive: {
+    color: COLORS.textWhite,
+  },
+  deckTabTextDisabled: {
+    color: COLORS.grayDark,
+  },
+
+  // Seat Pricing
+  seatPricingCard: {
+    marginHorizontal: 16,
+    marginTop: 6,
+    marginBottom: 14,
+    borderRadius: 10,
+    padding: 14,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.grayLight,
+  },
+  seatPricingTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 10,
+  },
+  seatPricingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  seatPricingCol: {
+    flex: 1,
+  },
+  seatPricingLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+  },
+  seatPricingValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+  },
+
   // Seat Layout Styles
   seatLayoutContainer: {
     marginHorizontal: 16,
@@ -652,39 +835,103 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E8E8E8',
   },
-  steeringIcon: {
-    alignSelf: 'flex-end',
-    marginBottom: 12,
-    marginRight: 12,
-    backgroundColor: 'transparent',
-  },
-  seatsGrid: {
-    alignItems: 'center',
-  },
-  seatRow: {
-    flexDirection: 'row',
+
+  seatMapEmpty: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    paddingVertical: 30,
   },
-  seatGroup: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  aisle: {
-    width: 24,
-  },
-  seat: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  seatText: {
-    fontSize: 13,
+  seatMapEmptyText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
     fontWeight: '600',
+  },
+
+  busCanvasOuter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  busCanvasInner: {
+    borderWidth: 6,
+    borderColor: COLORS.grayDark,
+    borderRadius: 22,
+    padding: 16,
+    backgroundColor: COLORS.white,
+    width: '100%',
+  },
+  frontRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  frontBadge: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: COLORS.primaryLight,
+  },
+  frontBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+  },
+  driverBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 2,
+    borderColor: COLORS.secondary,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
+  },
+  driverBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.secondaryDark,
+  },
+
+  seatMap: {
+    position: 'relative',
+    alignSelf: 'center',
+    marginVertical: 6,
+  },
+  seatItem: {
+    position: 'absolute',
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  seatItemSeater: {
+    borderRadius: 6,
+  },
+  seatItemSleeper: {
+    borderRadius: 8,
+  },
+  seatNumberText: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  backBadge: {
+    marginTop: 14,
+    borderRadius: 10,
+    backgroundColor: COLORS.grayLight,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  backBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.grayDark,
   },
 
   // Bottom Button Styles
