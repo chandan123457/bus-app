@@ -294,147 +294,145 @@ const ProfileScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.heroSection}>
-        <ImageBackground
-          source={require('../../assets/landing-background.jpg')}
-          style={styles.heroBackground}
-          imageStyle={styles.heroBackgroundImage}
-          resizeMode="cover"
-        >
-          <View style={styles.heroOverlay} />
-
-          <SafeAreaView edges={['top']} style={styles.heroInner}>
-            <View style={styles.heroBrandRow}>
-              <Image source={require('../../assets/logo.png')} style={styles.brandLogo} />
-              <Text style={styles.brandTagline}>Your Journey Partner</Text>
-            </View>
-            <Text style={styles.heroTitle}>My Profile</Text>
-            <Text style={styles.heroSubtitle}>Manage your account information</Text>
-          </SafeAreaView>
-        </ImageBackground>
-      </View>
+      <ImageBackground
+        source={require('../../assets/landing-background.jpg')}
+        style={styles.heroBackground}
+        resizeMode="cover"
+      >
+        <View style={styles.heroOverlay} />
+        <SafeAreaView edges={['top']} style={styles.heroInner}>
+          <View style={styles.heroBrandRow}>
+            <Image source={require('../../assets/logo.png')} style={styles.brandLogo} />
+            <Text style={styles.brandTagline}>Your Journey Partner</Text>
+          </View>
+          <Text style={styles.heroTitle}>My Profile</Text>
+          <Text style={styles.heroSubtitle}>Manage your account information</Text>
+        </SafeAreaView>
+      </ImageBackground>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {error && (
-          <View style={styles.errorBanner}>
-            <MaterialCommunityIcons name="alert-circle" size={20} color="#B91C1C" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={fetchUserProfile} style={styles.retryButton}>
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <View style={styles.mainCard}>
+          {error && (
+            <View style={styles.errorBanner}>
+              <MaterialCommunityIcons name="alert-circle" size={20} color="#B91C1C" />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity onPress={fetchUserProfile} style={styles.retryButton}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-        <View style={styles.avatarCard}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarLetter}>{avatarInitial}</Text>
+          <View style={styles.avatarCard}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarLetter}>{avatarInitial}</Text>
+            </View>
+            <View style={styles.avatarMeta}>
+              <Text style={styles.avatarName}>{travelerName}</Text>
+              <Text style={styles.avatarEmail} numberOfLines={1} ellipsizeMode="tail">{profile?.email || 'Add your email'}</Text>
+            </View>
+            <View style={[
+              styles.verificationPill,
+              isVerified ? styles.verificationPillSuccess : styles.verificationPillWarning,
+            ]}>
+              <MaterialCommunityIcons
+                name={verificationIcon}
+                size={16}
+                color={isVerified ? '#10B981' : '#F97316'}
+              />
+              <Text
+                style={[
+                  styles.verificationText,
+                  isVerified ? styles.verificationSuccessText : styles.verificationWarningText,
+                ]}
+              >
+                {verificationLabel}
+              </Text>
+            </View>
           </View>
-          <View style={styles.avatarMeta}>
-            <Text style={styles.avatarName}>{travelerName}</Text>
-            <Text style={styles.avatarEmail} numberOfLines={1} ellipsizeMode="tail">{profile?.email || 'Add your email'}</Text>
-          </View>
-          <View style={[
-            styles.verificationPill,
-            isVerified ? styles.verificationPillSuccess : styles.verificationPillWarning,
-          ]}>
-            <MaterialCommunityIcons
-              name={verificationIcon}
-              size={16}
-              color={isVerified ? '#10B981' : '#F97316'}
-            />
-            <Text
-              style={[
-                styles.verificationText,
-                isVerified ? styles.verificationSuccessText : styles.verificationWarningText,
-              ]}
-            >
-              {verificationLabel}
-            </Text>
-          </View>
+
+          {loading && !profile ? (
+            <View style={styles.loaderWrapper}>
+              <ActivityIndicator size="small" color="#4F46E5" />
+              <Text style={styles.loaderText}>Fetching profile...</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>Account Information</Text>
+                  {!isEditing ? (
+                    <TouchableOpacity style={styles.editLink} onPress={handleEditToggle} activeOpacity={0.7}>
+                      <MaterialCommunityIcons name="pencil-outline" size={16} color="#6366F1" />
+                      <Text style={styles.editText}>Edit</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.editActions}>
+                      <TouchableOpacity
+                        style={styles.cancelBtn}
+                        onPress={handleEditToggle}
+                        activeOpacity={0.7}
+                        disabled={saving}
+                      >
+                        <Text style={styles.cancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+                        onPress={handleSaveProfile}
+                        activeOpacity={0.7}
+                        disabled={saving}
+                      >
+                        {saving ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.saveText}>Save</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.infoGrid}>{accountDetails.map(renderAccountDetail)}</View>
+              </View>
+
+              <View style={styles.cardGrid}>
+                <View style={[styles.card, styles.quickActionsCard]}>
+                  <Text style={styles.cardTitle}>Quick Actions</Text>
+                  <View style={styles.quickActionDivider} />
+                  {quickActions.map(renderQuickAction)}
+                </View>
+
+                <View style={[styles.card, styles.statusCard]}>
+                  <Text style={[styles.cardTitle, styles.statusCardTitle]}>Account Status</Text>
+                  <View style={styles.statusBadge}>
+                    <MaterialCommunityIcons
+                      name={verificationIcon}
+                      size={18}
+                      color="#FFFFFF"
+                    />
+                    <Text style={styles.statusBadgeText}>{verificationLabel}</Text>
+                  </View>
+                  <View style={styles.statusMetaRow}>
+                    <Text style={styles.statusLabel}>Account Type</Text>
+                    <Text style={styles.statusValue}>Traveler</Text>
+                  </View>
+                  <View style={styles.statusMetaRow}>
+                    <Text style={styles.statusLabel}>Member Since</Text>
+                    <Text style={styles.statusValue}>{formatDate(profile?.createdAt)}</Text>
+                  </View>
+                  <View style={styles.statsRow}>
+                    <View style={styles.statsChip}>
+                      <Text style={styles.statsChipNumber}>{stats.totalBookings}</Text>
+                      <Text style={styles.statsChipLabel}>Total Bookings</Text>
+                    </View>
+                    <View style={styles.statsChip}>
+                      <Text style={styles.statsChipNumber}>{formatCurrency(stats.totalSpent)}</Text>
+                      <Text style={styles.statsChipLabel}>Total Spent</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </>
+          )}
         </View>
-
-        {loading && !profile ? (
-          <View style={styles.loaderWrapper}>
-            <ActivityIndicator size="small" color="#4F46E5" />
-            <Text style={styles.loaderText}>Fetching profile...</Text>
-          </View>
-        ) : (
-          <>
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>Account Information</Text>
-                {!isEditing ? (
-                  <TouchableOpacity style={styles.editLink} onPress={handleEditToggle} activeOpacity={0.7}>
-                    <MaterialCommunityIcons name="pencil-outline" size={16} color="#6366F1" />
-                    <Text style={styles.editText}>Edit</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.editActions}>
-                    <TouchableOpacity
-                      style={styles.cancelBtn}
-                      onPress={handleEditToggle}
-                      activeOpacity={0.7}
-                      disabled={saving}
-                    >
-                      <Text style={styles.cancelText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-                      onPress={handleSaveProfile}
-                      activeOpacity={0.7}
-                      disabled={saving}
-                    >
-                      {saving ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <Text style={styles.saveText}>Save</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-              <View style={styles.infoGrid}>{accountDetails.map(renderAccountDetail)}</View>
-            </View>
-
-            <View style={styles.cardGrid}>
-              <View style={[styles.card, styles.quickActionsCard]}>
-                <Text style={styles.cardTitle}>Quick Actions</Text>
-                <View style={styles.quickActionDivider} />
-                {quickActions.map(renderQuickAction)}
-              </View>
-
-              <View style={[styles.card, styles.statusCard]}>
-                <Text style={[styles.cardTitle, styles.statusCardTitle]}>Account Status</Text>
-                <View style={styles.statusBadge}>
-                  <MaterialCommunityIcons
-                    name={verificationIcon}
-                    size={18}
-                    color="#FFFFFF"
-                  />
-                  <Text style={styles.statusBadgeText}>{verificationLabel}</Text>
-                </View>
-                <View style={styles.statusMetaRow}>
-                  <Text style={styles.statusLabel}>Account Type</Text>
-                  <Text style={styles.statusValue}>Traveler</Text>
-                </View>
-                <View style={styles.statusMetaRow}>
-                  <Text style={styles.statusLabel}>Member Since</Text>
-                  <Text style={styles.statusValue}>{formatDate(profile?.createdAt)}</Text>
-                </View>
-                <View style={styles.statsRow}>
-                  <View style={styles.statsChip}>
-                    <Text style={styles.statsChipNumber}>{stats.totalBookings}</Text>
-                    <Text style={styles.statsChipLabel}>Total Bookings</Text>
-                  </View>
-                  <View style={styles.statsChip}>
-                    <Text style={styles.statsChipNumber}>{formatCurrency(stats.totalSpent)}</Text>
-                    <Text style={styles.statsChipLabel}>Total Spent</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </>
-        )}
       </ScrollView>
     </View>
   );
@@ -443,20 +441,12 @@ const ProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
-  },
-  heroSection: {
-    height: 160,
-    paddingBottom: 20,
+    backgroundColor: '#F5F7F9',
   },
   heroBackground: {
-    width: '100%',
-    height: '100%',
-  },
-  heroBackgroundImage: {
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    opacity: 0.85,
+    height: 160,
+    width: SCREEN_WIDTH,
+    paddingBottom: 20,
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -493,8 +483,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   scrollContent: {
-    padding: 20,
     paddingBottom: 120,
+  },
+  mainCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 12,
+    marginHorizontal: 18,
+    marginTop: -25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
     gap: 16,
   },
   errorBanner: {
@@ -506,10 +507,6 @@ const styles = StyleSheet.create({
     gap: 10,
     borderWidth: 1,
     borderColor: '#FECACA',
-    navLabelActive: {
-      color: '#FFFFFF',
-      fontWeight: '500',
-    },
   },
   errorText: {
     flex: 1,
@@ -539,7 +536,6 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
-    marginTop: -20,
   },
   avatarCircle: {
     width: 56,

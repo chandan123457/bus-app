@@ -361,20 +361,21 @@ const BookingsScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       
-      <SafeAreaView edges={['top']} style={styles.safeArea}>
-        {/* Header */}
-        <ImageBackground
-          source={require('../../assets/landing-background.jpg')}
-          style={styles.header}
-          resizeMode="cover"
-        >
-          <View style={styles.headerOverlay} />
-          <SafeAreaView edges={['top']} style={styles.headerContent}>
-            <Text style={styles.headerTitle}>My Bookings</Text>
-            <Text style={styles.headerSubtitle}>View and manage your bus tickets</Text>
-          </SafeAreaView>
-        </ImageBackground>
+      {/* Header */}
+      <ImageBackground
+        source={require('../../assets/landing-background.jpg')}
+        style={styles.header}
+        resizeMode="cover"
+      >
+        <View style={styles.headerOverlay} />
+        <SafeAreaView edges={['top']} style={styles.headerContent}>
+          <Text style={styles.headerTitle}>My Bookings</Text>
+          <Text style={styles.headerSubtitle}>View and manage your bus tickets</Text>
+        </SafeAreaView>
+      </ImageBackground>
 
+      {/* Main Content Card */}
+      <View style={styles.mainCard}>
         {/* Tab Navigation */}
         <View style={styles.tabContainer}>
           {tabs.map((tab) => (
@@ -418,7 +419,7 @@ const BookingsScreen = ({ navigation }) => {
             />
           )}
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 };
@@ -426,13 +427,11 @@ const BookingsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
-  },
-  safeArea: {
-    flex: 1,
+    backgroundColor: '#F5F7F9',
   },
   header: {
     height: 160,
+    width: SCREEN_WIDTH,
     paddingBottom: 20,
   },
   headerOverlay: {
@@ -454,17 +453,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
   },
+  mainCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginHorizontal: 18,
+    marginTop: -25,
+    paddingTop: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    overflow: 'hidden',
+  },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginHorizontal: 12,
+    marginBottom: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
   },
   tab: {
     flex: 1,
@@ -493,8 +504,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listContent: {
-    padding: 16,
-    marginTop: -18,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
   emptyListContent: {
     flexGrow: 1,
@@ -512,6 +523,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -639,41 +652,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     margin: 16,
+    marginTop: 0,
     paddingVertical: 12,
-    backgroundColor: '#6366F1',
+    backgroundColor: '#EEF2FF',
     borderRadius: 12,
   },
   downloadButtonText: {
-    color: '#FFFFFF',
+    color: '#4F46E5',
     fontWeight: '600',
     marginLeft: 8,
   },
   errorBanner: {
-    margin: 16,
+    marginHorizontal: 16,
+    marginBottom: 8,
     padding: 12,
     backgroundColor: '#FEF2F2',
     borderRadius: 8,
     borderLeftWidth: 4,
     borderLeftColor: '#EF4444',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   errorText: {
+    flex: 1,
     color: '#B91C1C',
     fontSize: 14,
+  },
+  errorAction: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 99,
+  },
+  errorActionText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 12,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingTop: 40,
   },
-  emptyStateTitle: {
+  emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1E293B',
     marginBottom: 8,
+    marginTop: 16,
   },
-  emptyStateDescription: {
+  emptySubtitle: {
     fontSize: 14,
     color: '#64748B',
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
 });
 
