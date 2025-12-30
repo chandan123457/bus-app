@@ -265,6 +265,7 @@ const SeatSelectionScreen = ({ navigation, route }) => {
       lowerSeater: Math.abs(Number(toStop.lowerSeaterPrice || 0) - Number(fromStop.lowerSeaterPrice || 0)),
       lowerSleeper: Math.abs(Number(toStop.lowerSleeperPrice || 0) - Number(fromStop.lowerSleeperPrice || 0)),
       upperSleeper: Math.abs(Number(toStop.upperSleeperPrice || 0) - Number(fromStop.upperSleeperPrice || 0)),
+      upperSeater: Math.abs(Number(toStop.priceFromOrigin || 0) - Number(fromStop.priceFromOrigin || 0)),
     };
   };
 
@@ -273,8 +274,8 @@ const SeatSelectionScreen = ({ navigation, route }) => {
     const level = String(seat?.level || seat?.deck || '').toUpperCase();
     const type = String(seat?.type || '').toUpperCase();
 
-    // Business rule / backend design: no upper seater price field; treat as free.
-    if (level === 'UPPER' && type === 'SEATER') return 0;
+    // Upper SEATER pricing: use priceFromOrigin (matches backend logic)
+    if (level === 'UPPER' && type === 'SEATER') return Number(pricing.upperSeater || 0);
 
     if (level === 'LOWER' && type === 'SEATER') return Number(pricing.lowerSeater || 0);
     if (level === 'LOWER' && type === 'SLEEPER') return Number(pricing.lowerSleeper || 0);

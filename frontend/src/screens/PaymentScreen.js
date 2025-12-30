@@ -283,8 +283,10 @@ const PaymentScreen = ({ navigation, route }) => {
     const level = String(seat?.level || seat?.deck || '').toUpperCase();
     const type = String(seat?.type || '').toUpperCase();
 
-    // Upper deck sitting seats: treat as free (no upper seater price field in backend stop model).
-    if (level === 'UPPER' && type === 'SEATER') return 0;
+    // Upper deck seater seats: use priceFromOrigin (matches backend logic)
+    if (level === 'UPPER' && type === 'SEATER') {
+      return Math.abs(Number(toStop.priceFromOrigin || 0) - Number(fromStop.priceFromOrigin || 0));
+    }
 
     if (level === 'LOWER' && type === 'SEATER') {
       return Math.abs(Number(toStop.lowerSeaterPrice || 0) - Number(fromStop.lowerSeaterPrice || 0));
@@ -322,9 +324,9 @@ const PaymentScreen = ({ navigation, route }) => {
     if (level === 'UPPER' && type === 'SLEEPER') {
       return Number(stop.upperSleeperPrice ?? stop.priceFromOrigin ?? 0);
     }
+    // Upper SEATER pricing: use priceFromOrigin (matches backend logic)
     if (level === 'UPPER' && type === 'SEATER') {
-      // No upperSeaterPrice field in backend - Upper Deck SEATER seats are FREE
-      return 0;
+      return Number(stop.priceFromOrigin ?? 0);
     }
 
     return Number(stop.priceFromOrigin ?? 0);
@@ -397,6 +399,9 @@ const PaymentScreen = ({ navigation, route }) => {
   const [paymentUrl, setPaymentUrl] = useState('');
   const [currentPaymentId, setCurrentPaymentId] = useState('');
   const [authToken, setAuthToken] = useState('');
+  // Backend-calculated amounts (source of truth)
+  const [backendAmountNpr, setBackendAmountNpr] = useState(null);
+  const [backendAmountInr, setBackendAmountInr] = useState(null);
   // Used by eSewa flow for debugging/progress messages.
   const [, setDebugMessage] = useState(null);
   const [showWebView, setShowWebView] = useState({ 
@@ -413,9 +418,11 @@ const PaymentScreen = ({ navigation, route }) => {
     { id: 'ESEWA', label: 'eSewa' },
   ];
 
-  // Total amount calculation
-  const totalAmountNpr = isCouponApplied ? finalAmount : originalAmount;
-  const totalAmountInr = convertNprToInr(totalAmountNpr);
+  // Total amount calculation - use backend amounts if available (source of truth), otherwise show estimates
+  const displayAmountNpr = backendAmountNpr !== null ? backendAmountNpr : (isCouponApplied ? finalAmount : originalAmount);
+  const displayAmountInr = backendAmountInr !== null ? backendAmountInr : convertNprToInr(displayAmountNpr);
+  const totalAmountNpr = displayAmountNpr;
+  const totalAmountInr = displayAmountInr;
   const couponDiscountInr = convertNprToInr(couponDiscount);
 
   const applyCoupon = async () => {
@@ -633,10 +640,25 @@ const PaymentScreen = ({ navigation, route }) => {
 
       setCurrentPaymentId(paymentResult.paymentId);
 
+      // Store backend-calculated amounts (source of truth)
       if (selectedPaymentMethod === 'RAZORPAY') {
+        // Backend returns amount in INR for Razorpay
+        const backendInr = Number(paymentResult.amount);
+        const backendNpr = backendInr / NPR_TO_INR_RATE; // Convert back to NPR
+        setBackendAmountInr(backendInr);
+        setBackendAmountNpr(backendNpr);
+        console.log('Backend amounts (Razorpay):', { backendInr, backendNpr });
+        
         // Open actual Razorpay checkout
         await openRazorpayCheckout(paymentResult, token);
       } else if (selectedPaymentMethod === 'ESEWA') {
+        // Backend returns amount in NPR for eSewa
+        const backendNpr = Number(paymentResult.amount);
+        const backendInr = backendNpr * NPR_TO_INR_RATE;
+        setBackendAmountNpr(backendNpr);
+        setBackendAmountInr(backendInr);
+        console.log('Backend amounts (eSewa):', { backendNpr, backendInr });
+        
         // Handle eSewa payment
         await handleEsewaPayment(paymentResult, token);
       }
@@ -907,18 +929,7 @@ const PaymentScreen = ({ navigation, route }) => {
             }
             h2 { margin: 0 0 10px 0; font-size: 20px; }
             p { margin: 5px 0; font-size: 14px; opacity: 0.9; }
-            .debug-info {
-              background: rgba(0,0,0,0.2);
-              border-radius: 8px;
-              padding: 15px;
-              margin-top: 20px;
-              text-align: left;
-              font-size: 11px;
-              max-width: 350px;
-              word-break: break-all;
-            }
-            .debug-info h4 { margin: 0 0 10px 0; font-size: 12px; }
-            .debug-row { margin: 3px 0; }
+
             .error-box {
               background: #ff4444;
               border-radius: 8px;
@@ -945,14 +956,6 @@ const PaymentScreen = ({ navigation, route }) => {
             <h2>Redirecting to eSewa...</h2>
             <p>Amount: NPR ${params.total_amount}</p>
             <p>Transaction: ${params.transaction_uuid}</p>
-            
-            <div class="debug-info">
-              <h4>Debug Info:</h4>
-              <div class="debug-row">Form URL: ${formUrl}</div>
-              <div class="debug-row">Product Code: ${params.product_code}</div>
-              <div class="debug-row">Success URL: ${params.success_url}</div>
-              <div class="debug-row">Signature: ${params.signature ? params.signature.substring(0, 20) + '...' : 'MISSING'}</div>
-            </div>
             
             <div id="error-container" style="display:none;" class="error-box">
               <p id="error-message"></p>

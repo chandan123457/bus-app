@@ -158,9 +158,9 @@ const PassengerInformation = ({ navigation, route }) => {
     if (level === 'UPPER' && type === 'SLEEPER') {
       return Number(stop.upperSleeperPrice ?? stop.priceFromOrigin ?? 0);
     }
+    // Upper SEATER pricing: use priceFromOrigin (matches backend logic)
     if (level === 'UPPER' && type === 'SEATER') {
-      // No upperSeaterPrice field in backend - Upper Deck SEATER seats are FREE
-      return 0;
+      return Number(stop.priceFromOrigin ?? 0);
     }
 
     return Number(stop.priceFromOrigin ?? 0);

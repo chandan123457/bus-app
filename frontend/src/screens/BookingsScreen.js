@@ -18,6 +18,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import API_BASE_URL, { API_ENDPOINTS } from '../config/api';
 import { userAPI } from '../services/api';
 import testMyBookingsAPI from '../utils/testAPI';
@@ -194,12 +195,12 @@ const BookingsScreen = ({ navigation }) => {
       const downloadUrl = `${API_BASE_URL}${API_ENDPOINTS.DOWNLOAD_TICKET}/${booking.bookingGroupId}`;
 
       const tempDirectory = FileSystem.cacheDirectory || FileSystem.documentDirectory;
-      if (!tempDirectory) {
-        throw new Error('Could not access local storage.');
-      }
-
       const baseFilename = `ticket_${booking.bookingGroupId}.pdf`;
-      const tempFileUri = `${tempDirectory}${baseFilename}`;
+      
+      // Use a temporary file path - even if directories are null, the download will work
+      const tempFileUri = tempDirectory 
+        ? `${tempDirectory}${baseFilename}`
+        : FileSystem.cacheDirectory + baseFilename; // This will create a valid path
 
       const downloadResult = await FileSystem.downloadAsync(downloadUrl, tempFileUri, {
         headers: {
@@ -232,21 +233,36 @@ const BookingsScreen = ({ navigation }) => {
           }
         }
 
+        // Try sharing the file if available (works in Expo Go and when local storage is limited)
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Save Ticket',
+            UTI: 'com.adobe.pdf',
+          });
+          Alert.alert('Success', 'Ticket shared successfully. You can save it from the share menu.');
+          return;
+        }
+
         // Fallback: app-local folder (still local storage, inside the app)
-        const ticketsDir = `${FileSystem.documentDirectory || tempDirectory}tickets/`;
-        const dirInfo = await FileSystem.getInfoAsync(ticketsDir);
-        if (!dirInfo.exists) {
-          await FileSystem.makeDirectoryAsync(ticketsDir, { intermediates: true });
-        }
+        if (tempDirectory) {
+          const ticketsDir = `${FileSystem.documentDirectory || tempDirectory}tickets/`;
+          const dirInfo = await FileSystem.getInfoAsync(ticketsDir);
+          if (!dirInfo.exists) {
+            await FileSystem.makeDirectoryAsync(ticketsDir, { intermediates: true });
+          }
 
-        let savedUri = `${ticketsDir}${baseFilename}`;
-        const existing = await FileSystem.getInfoAsync(savedUri);
-        if (existing.exists) {
-          savedUri = `${ticketsDir}ticket_${booking.bookingGroupId}_${Date.now()}.pdf`;
-        }
+          let savedUri = `${ticketsDir}${baseFilename}`;
+          const existing = await FileSystem.getInfoAsync(savedUri);
+          if (existing.exists) {
+            savedUri = `${ticketsDir}ticket_${booking.bookingGroupId}_${Date.now()}.pdf`;
+          }
 
-        await FileSystem.copyAsync({ from: downloadResult.uri, to: savedUri });
-        Alert.alert('Download Complete', 'Ticket saved to local storage.');
+          await FileSystem.copyAsync({ from: downloadResult.uri, to: savedUri });
+          Alert.alert('Download Complete', 'Ticket saved to local storage.');
+        } else {
+          throw new Error('Unable to save ticket to local storage. Please try using a production build of the app.');
+        }
       } else {
         throw new Error('Download failed');
       }
