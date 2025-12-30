@@ -6,7 +6,6 @@ import Svg, { Path } from 'react-native-svg';
 import HomeScreen from '../screens/HomeScreen';
 import BookingsScreen from '../screens/BookingsScreen';
 import OffersScreen from '../screens/OffersScreen';
-import HelpSupportScreen from '../screens/HelpSupportScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
@@ -27,12 +26,6 @@ const BookingsIconNav = ({ active = false }) => (
 const OffersIconNav = ({ active = false }) => (
   <Svg width="26" height="26" viewBox="0 0 24 24">
     <Path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z" fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}/>
-  </Svg>
-);
-
-const SupportIconNav = ({ active = false }) => (
-  <Svg width="26" height="26" viewBox="0 0 24 24">
-    <Path d="M12 1c-4.97 0-9 4.03-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7c0-4.97-4.03-9-9-9z" fill={active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}/>
   </Svg>
 );
 
@@ -72,7 +65,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
         if (route.name === 'Home') IconComponent = HomeIconNav;
         else if (route.name === 'Bookings') IconComponent = BookingsIconNav;
         else if (route.name === 'Offers') IconComponent = OffersIconNav;
-        else if (route.name === 'Support') IconComponent = SupportIconNav;
         else if (route.name === 'Profile') IconComponent = ProfileIconNav;
 
         return (
@@ -104,7 +96,6 @@ const TabNavigator = () => {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Bookings" component={BookingsScreen} />
       <Tab.Screen name="Offers" component={OffersScreen} />
-      <Tab.Screen name="Support" component={HelpSupportScreen} options={{ tabBarLabel: 'Support' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

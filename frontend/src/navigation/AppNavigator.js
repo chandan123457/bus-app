@@ -73,7 +73,7 @@ const AppNavigator = () => {
           }}
         />
 
-        {/* Main Tab Navigator (Home, Bookings, Offers, Support, Profile) */}
+        {/* Main Tab Navigator (Home, Bookings, Offers, Profile) */}
         <Stack.Screen 
           name="Home" 
           component={TabNavigator}

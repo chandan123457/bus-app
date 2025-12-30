@@ -458,6 +458,7 @@ const styles = StyleSheet.create({
   heroBackgroundImage: {
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
+    opacity: 0.85,
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -476,6 +476,7 @@ const BookingsScreen = ({ navigation }) => {
         <ImageBackground
           source={require('../../assets/landing-background.jpg')}
           style={styles.backgroundImage}
+          imageStyle={styles.backgroundImageDimmed}
           resizeMode="cover"
         >
           <View style={[styles.overlay, { opacity: 0.85 }]} />
@@ -551,6 +552,9 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
+  },
+  backgroundImageDimmed: {
+    opacity: 0.85,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
