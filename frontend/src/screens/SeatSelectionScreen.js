@@ -143,12 +143,14 @@ const SeatSelectionScreen = ({ navigation, route }) => {
         if (response.data.seats?.lowerDeck) {
           response.data.seats.lowerDeck.forEach(seat => {
             const seatId = seat.id; // Use seat ID as unique key
+            const deck = (seat.level || seat.deck || 'LOWER').toUpperCase();
             newSeatStates[seatId] = seat.isAvailable ? 'available' : 'booked';
             newSeatMapping[seatId] = {
               id: seat.id,
               seatNumber: seat.seatNumber,
               type: seat.type,
               level: seat.level,
+              deck,
               row: seat.row,
               column: seat.column,
               rowSpan: seat.rowSpan,
@@ -162,12 +164,14 @@ const SeatSelectionScreen = ({ navigation, route }) => {
         if (response.data.seats?.upperDeck) {
           response.data.seats.upperDeck.forEach(seat => {
             const seatId = seat.id; // Use seat ID as unique key
+            const deck = (seat.level || seat.deck || 'UPPER').toUpperCase();
             newSeatStates[seatId] = seat.isAvailable ? 'available' : 'booked';
             newSeatMapping[seatId] = {
               id: seat.id,
               seatNumber: seat.seatNumber,
               type: seat.type,
               level: seat.level,
+              deck,
               row: seat.row,
               column: seat.column,
               rowSpan: seat.rowSpan,
@@ -360,10 +364,6 @@ const SeatSelectionScreen = ({ navigation, route }) => {
           }}
         >
           {deckSeats.map(renderSeatBox)}
-        </View>
-
-        <View style={styles.backBox}>
-          <Text style={styles.backText}>BACK</Text>
         </View>
       </View>
     );

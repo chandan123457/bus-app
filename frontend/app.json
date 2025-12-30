@@ -2,6 +2,7 @@
   "expo": {
     "name": "Bus Booking",
     "slug": "bus-booking-app",
+    "owner": "yuvi899",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
@@ -42,7 +43,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "c285e44f-25cb-469c-bc90-65e3ecda9075"
+        "projectId": "b10c249a-0b5f-46d7-bdeb-bc6a90dd91d2"
       }
     }
   }

@@ -30,7 +30,16 @@ const PassengerInformation = ({ navigation, route }) => {
     droppingPoint
   } = route.params || {};
 
-  const [actualSelectedSeats, setActualSelectedSeats] = useState(selectedSeats);
+  const normalizeSeat = (seat) => {
+    if (!seat) return seat;
+    const deck = (seat.deck || seat.level || 'LOWER').toString().toUpperCase();
+    const seatNumber = seat.seatNumber || seat.number || seat.seat_no || seat.id;
+    return { ...seat, deck, seatNumber };
+  };
+
+  const [actualSelectedSeats, setActualSelectedSeats] = useState(() =>
+    (selectedSeats || []).map(normalizeSeat)
+  );
 
   console.log('PassengerInformation extracted data:', {
     busData: !!busData,
@@ -49,8 +58,9 @@ const PassengerInformation = ({ navigation, route }) => {
         .then(backupData => {
           if (backupData) {
             const parsedSeats = JSON.parse(backupData);
-            console.log('Recovered seats from AsyncStorage:', parsedSeats);
-            setActualSelectedSeats(parsedSeats);
+            const normalizedSeats = (parsedSeats || []).map(normalizeSeat);
+            console.log('Recovered seats from AsyncStorage:', normalizedSeats);
+            setActualSelectedSeats(normalizedSeats);
           } else {
             console.log('No backup seats found in AsyncStorage');
           }
@@ -211,7 +221,7 @@ const PassengerInformation = ({ navigation, route }) => {
                   {busData.type} | {busData.departureTime}
                 </Text>
                 <Text style={styles.seatsSelected}>
-                  Seats: {selectedSeats.join(', ')}
+                  Seats: {actualSelectedSeats.map(seat => `${seat?.seatNumber || ''} (${seat?.deck || 'LOWER'})`).join(', ')}
                 </Text>
               </View>
               

@@ -374,15 +374,8 @@ const SignUpScreen = ({ navigation }) => {
                       ) : null}
                     </View>
 
-                    {/* Action Buttons */}
+                    {/* Action Button */}
                     <View style={styles.otpButtonContainer}>
-                      <TouchableOpacity
-                        style={[styles.otpButton, styles.otpResendButton]}
-                        onPress={handleResendOTP}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.otpResendButtonText}>Resend OTP</Text>
-                      </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.otpButton, styles.otpVerifyButton, (verifyingOTP || !otp || otp.length !== 6) && styles.otpButtonDisabled]}
                         onPress={handleVerifyOTP}
@@ -855,25 +848,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   otpButtonContainer: {
-    flexDirection: 'row',
-    gap: 12,
+    flexDirection: 'column',
+    gap: 0,
   },
   otpButton: {
-    flex: 1,
+    width: '100%',
     height: 50,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  otpResendButton: {
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  otpResendButtonText: {
-    color: '#1F2937',
-    fontSize: 15,
-    fontWeight: '600',
   },
   otpVerifyButton: {
     backgroundColor: PRIMARY_BLUE,

@@ -23,30 +23,6 @@ import CryptoJS from 'crypto-js';
 // Import RazorpayCheckout properly
 import RazorpayCheckout from 'react-native-razorpay';
 
-// Debug function to check environment
-const checkPaymentEnvironment = () => {
-  console.log('🔍 Payment Environment Check:', {
-    hasRazorpay: !!RazorpayCheckout,
-    razorpayType: typeof RazorpayCheckout,
-    hasOpenMethod: RazorpayCheckout && typeof RazorpayCheckout.open === 'function',
-    platform: require('react-native').Platform.OS,
-    isDevelopment: __DEV__
-  });
-  
-  if (!RazorpayCheckout) {
-    console.error('❌ RazorpayCheckout is not available. This means:');
-    console.error('   - You may be running in Expo Go (native modules not supported)');
-    console.error('   - Package not properly installed or linked');
-    console.error('   - Need to create a development build or production build');
-  } else if (typeof RazorpayCheckout.open !== 'function') {
-    console.error('❌ RazorpayCheckout.open is not a function');
-    console.error('   - Package may be incorrectly imported');
-    console.error('   - Version mismatch or corrupted installation');
-  } else {
-    console.log('✅ RazorpayCheckout is properly available');
-  }
-};
-
 // Prices are stored in NPR in DB; INR is derived for display.
 const NPR_TO_INR_RATE = 0.625;
 const convertNprToInr = (nprAmount) => Number((Number(nprAmount || 0) * NPR_TO_INR_RATE).toFixed(2));
@@ -218,6 +194,13 @@ const PaymentScreen = ({ navigation, route }) => {
   
   const { busData, selectedSeats = [], passengers = [] } = route.params;
 
+  const normalizeSeat = (seat) => {
+    if (!seat) return seat;
+    const deck = (seat.deck || seat.level || 'LOWER').toString().toUpperCase();
+    const seatNumber = seat.seatNumber || seat.number || seat.seat_no || seat.id;
+    return { ...seat, deck, seatNumber };
+  };
+
   useEffect(() => {
     getCachedUserEmail().then((email) => setUserEmail(email || ''));
   }, []);
@@ -236,7 +219,9 @@ const PaymentScreen = ({ navigation, route }) => {
   const getPointTime = (point) => point?.time || point?.departureTime || point?.arrivalTime || '';
 
   // State for actual selected seats with fallback recovery
-  const [actualSelectedSeats, setActualSelectedSeats] = useState(selectedSeats);
+  const [actualSelectedSeats, setActualSelectedSeats] = useState(() =>
+    (selectedSeats || []).map(normalizeSeat)
+  );
 
   console.log('PaymentScreen received params:', {
     busData: !!busData,
@@ -250,17 +235,15 @@ const PaymentScreen = ({ navigation, route }) => {
 
   // Try to recover selectedSeats from AsyncStorage if empty
   useEffect(() => {
-    // Debug payment environment
-    checkPaymentEnvironment();
-    
     if (!actualSelectedSeats || actualSelectedSeats.length === 0) {
       console.log('PaymentScreen: Attempting to recover selectedSeats from AsyncStorage...');
       AsyncStorage.getItem('selectedSeatsBackup')
         .then(backupData => {
           if (backupData) {
             const parsedSeats = JSON.parse(backupData);
-            console.log('PaymentScreen: Recovered seats from AsyncStorage:', parsedSeats);
-            setActualSelectedSeats(parsedSeats);
+            const normalizedSeats = (parsedSeats || []).map(normalizeSeat);
+            console.log('PaymentScreen: Recovered seats from AsyncStorage:', normalizedSeats);
+            setActualSelectedSeats(normalizedSeats);
           } else {
             console.log('PaymentScreen: No backup seats found in AsyncStorage');
             // If no backup and no seats, show error
@@ -280,13 +263,28 @@ const PaymentScreen = ({ navigation, route }) => {
     }
   }, []);
 
-  // Calculate fare - align UI with the selected trip's price
+  // Calculate fare - align UI with the selected trip's price (prefer backend-provided total if available)
   // NOTE: the actual amount charged is determined by backend `/user/payments/initiate`.
-  const seatCount = actualSelectedSeats.length > 0 ? actualSelectedSeats.length : 1; // Default to 1 seat minimum
+  const seatCount = actualSelectedSeats.length;
   const perSeatFareNpr = Number(busData?.priceNpr ?? busData?.price ?? busData?.tripData?.fare ?? busData?.tripData?.price ?? 0);
   const perSeatFareInr = convertNprToInr(perSeatFareNpr);
-  const baseFareNpr = seatCount * perSeatFareNpr;
-  const baseFareInr = seatCount * perSeatFareInr;
+
+  // If the backend already sent a total fare for the selected seats, prefer it; otherwise compute locally.
+  const backendTotalNpr = Number(
+    route.params?.backendTotalFareNpr ??
+    route.params?.totalFareNpr ??
+    route.params?.totalAmountNpr ??
+    busData?.totalFareNpr ??
+    busData?.totalAmountNpr ??
+    busData?.totalFare ??
+    busData?.totalPrice ??
+    0
+  );
+
+  const computedBaseFareNpr = seatCount > 0 ? seatCount * perSeatFareNpr : 0;
+  const baseFareNpr = backendTotalNpr > 0 ? backendTotalNpr : computedBaseFareNpr;
+  const baseFareInr = convertNprToInr(baseFareNpr);
+
   const gst = 0;
   const serviceFee = 0;
   const originalAmount = baseFareNpr;
@@ -312,13 +310,9 @@ const PaymentScreen = ({ navigation, route }) => {
     uri: null,
     paymentData: null, 
     token: null,
-    error: null,
-    debugInfo: null
+    error: null
   });
   
-  // Debug state for on-screen error display
-  const [debugMessage, setDebugMessage] = useState(null);
-
   const paymentMethods = [
     { id: 'RAZORPAY', label: 'Razorpay' },
     { id: 'ESEWA', label: 'eSewa' },
@@ -920,8 +914,7 @@ const PaymentScreen = ({ navigation, route }) => {
         uri: null,
         paymentData: paymentData,
         token: token,
-        error: null,
-        debugInfo: null
+        error: null
       });
 
     } catch (error) {
@@ -1013,7 +1006,7 @@ const PaymentScreen = ({ navigation, route }) => {
           const emailNote = await getEmailStatusNote();
 
           // Close WebView after confirmation
-          setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+                setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null });
           setPaymentLoading(false);
           setDebugMessage(null);
 
@@ -1030,7 +1023,7 @@ const PaymentScreen = ({ navigation, route }) => {
           console.error('❌ Booking confirmation failed after eSewa verification:', confirmError);
 
           // Close WebView even if confirm fails
-          setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+                  setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null });
           setPaymentLoading(false);
           setDebugMessage(`Confirmation failed: ${confirmError.message}`);
 
@@ -1044,7 +1037,7 @@ const PaymentScreen = ({ navigation, route }) => {
       }
 
       // Close WebView after verification
-      setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+                setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null });
       setPaymentLoading(false);
 
       // Verification failed - show error, don't navigate to bookings
@@ -1056,7 +1049,7 @@ const PaymentScreen = ({ navigation, route }) => {
       );
     } catch (error) {
       console.error('❌ Error handling success:', error);
-      setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+      setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null });
       setPaymentLoading(false);
       setDebugMessage(`Error: ${error.message}\n\nStack: ${error.stack}`);
       Alert.alert('Error', `Payment error: ${error.message}`, [{ text: 'OK' }]);
@@ -1074,7 +1067,7 @@ const PaymentScreen = ({ navigation, route }) => {
       // ignore
     }
     setDebugMessage(`Payment Failed for ${paymentId || 'unknown'}:\n${url}`);
-    setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+    setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null });
     setPaymentLoading(false);
     Alert.alert('Payment Failed', 'Your eSewa payment was not completed. Please try again.', [{ text: 'OK' }]);
   };
@@ -1106,39 +1099,12 @@ const PaymentScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
-      
-      {/* Debug Message Display - Shows errors on screen */}
-      {debugMessage && (
-        <View style={styles.debugOverlay}>
-          <View style={styles.debugCard}>
-            <Text style={styles.debugLabel}>🔍 DEBUG INFO:</Text>
-            <ScrollView style={styles.debugScroll}>
-              <Text style={styles.debugText} selectable={true}>{debugMessage}</Text>
-            </ScrollView>
-            <TouchableOpacity 
-              style={styles.debugCloseBtn}
-              onPress={() => setDebugMessage(null)}
-            >
-              <Text style={styles.debugCloseBtnText}>Close Debug</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        
-        <Text style={styles.headerTitle}>Payment</Text>
-        
-        <View style={styles.headerPlaceholder} />
+        <Text style={styles.headerTitle}>Confirm Booking</Text>
+        <Text style={styles.seatCountText}>{seatCount} seat{seatCount > 1 ? 's' : ''}</Text>
       </View>
 
       {/* Scrollable Content */}
@@ -1147,174 +1113,123 @@ const PaymentScreen = ({ navigation, route }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Boarding & Dropping Details */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Trip Details</Text>
-
-          <View style={styles.fareRow}>
-            <Text style={styles.fareLabel}>Boarding Point</Text>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.fareAmount}>{getPointLabel(boardingPoint, 'Not selected')}</Text>
-              {getPointTime(boardingPoint) ? (
-                <Text style={styles.subtleText}>{getPointTime(boardingPoint)}</Text>
-              ) : null}
-            </View>
-          </View>
-
-          <View style={styles.fareRow}>
-            <Text style={styles.fareLabel}>Dropping Point</Text>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.fareAmount}>{getPointLabel(droppingPoint, 'Not selected')}</Text>
-              {getPointTime(droppingPoint) ? (
-                <Text style={styles.subtleText}>{getPointTime(droppingPoint)}</Text>
-              ) : null}
-            </View>
-          </View>
-        </View>
-
-        {/* Payment Details Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Payment Details</Text>
-          {/* Base Fare */}
-          <View style={styles.fareRow}>
-            <Text style={styles.fareLabel}>
-              Base Fare ({seatCount} seats)
+        {/* Seat Card */}
+        <View style={styles.seatCard}>
+          <View>
+            <Text style={styles.seatNumberText}>
+              Seat {actualSelectedSeats.map(seat => `${seat?.seatNumber || ''} (${seat?.deck || 'LOWER'})`).join(', ')}
             </Text>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.fareAmount}>NPR {Number(baseFareNpr || 0).toFixed(2)}</Text>
-              <Text style={styles.subtleText}>(₹ {Number(baseFareInr || 0).toFixed(2)})</Text>
-            </View>
+            <Text style={styles.seatTypeText}>
+              {actualSelectedSeats[0]?.type || 'SEATER'} • {actualSelectedSeats[0]?.deck || 'LOWER'}
+            </Text>
           </View>
+          <Text style={styles.seatPriceText}>₹{Number(baseFareInr).toFixed(2)}</Text>
+        </View>
 
-          {/* Coupon Discount */}
-          {isCouponApplied && (
-            <View style={styles.fareRow}>
-              <Text style={[styles.fareLabel, styles.discountLabel]}>
-                Coupon Discount ({appliedCouponCode})
+        <View style={styles.divider} />
+
+        {/* Boarding Point */}
+        <View style={styles.pointContainer}>
+          <Text style={styles.pointLabel}>BOARDING POINT</Text>
+          <Text style={styles.pointName}>{getPointLabel(boardingPoint, 'Not selected')}</Text>
+          <Text style={styles.pointTime}>{getPointTime(boardingPoint)}</Text>
+        </View>
+
+        {/* Dropping Point */}
+        <View style={styles.pointContainer}>
+          <Text style={styles.pointLabel}>DROPPING POINT</Text>
+          <Text style={styles.pointName}>{getPointLabel(droppingPoint, 'Not selected')}</Text>
+          <Text style={styles.pointTime}>{getPointTime(droppingPoint)}</Text>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* Subtotal */}
+        <View style={styles.rowBetween}>
+          <Text style={styles.subtotalLabel}>Subtotal</Text>
+          <Text style={styles.subtotalValue}>₹{Number(totalAmountInr).toFixed(2)}</Text>
+        </View>
+
+        {/* Total */}
+        <View style={styles.rowBetween}>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalValue}>
+            NPR {Number(totalAmountNpr).toFixed(2)} (₹{Number(totalAmountInr).toFixed(2)})
+          </Text>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* Payment Methods */}
+        <Text style={styles.sectionTitle}>Select Payment Method</Text>
+        
+        {paymentMethods.map((method) => (
+          <TouchableOpacity
+            key={method.id}
+            style={[
+              styles.paymentMethodCard,
+              selectedPaymentMethod === method.id && styles.paymentMethodCardSelected
+            ]}
+            onPress={() => setSelectedPaymentMethod(method.id)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.paymentMethodLeft}>
+              <Ionicons 
+                name={method.id === 'RAZORPAY' ? 'card-outline' : 'wallet-outline'} 
+                size={24} 
+                color={selectedPaymentMethod === method.id ? '#4F46E5' : '#6B7280'} 
+              />
+              <Text style={[
+                styles.paymentMethodName,
+                selectedPaymentMethod === method.id && styles.paymentMethodNameSelected
+              ]}>
+                {method.label}
               </Text>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[styles.fareAmount, styles.discountAmount]}>- NPR {Number(couponDiscount || 0).toFixed(2)}</Text>
-                <Text style={[styles.subtleText, styles.discountAmount]}> (₹ {Number(couponDiscountInr || 0).toFixed(2)})</Text>
-              </View>
             </View>
-          )}
+            <Text style={[
+              styles.paymentMethodAmount,
+              selectedPaymentMethod === method.id && styles.paymentMethodAmountSelected
+            ]}>
+              Pay {method.id === 'RAZORPAY' ? `₹${Number(totalAmountInr).toFixed(2)}` : `NPR ${Number(totalAmountNpr).toFixed(2)}`}
+            </Text>
+          </TouchableOpacity>
+        ))}
 
-          {/* Divider */}
-          <View style={styles.divider} />
-
-          {/* Total */}
-          <View style={styles.fareRow}>
-            <Text style={styles.totalLabel}>Total Amount</Text>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.totalAmount}>NPR {Number(totalAmountNpr || 0).toFixed(2)}</Text>
-              <Text style={styles.subtleText}>(₹ {Number(totalAmountInr || 0).toFixed(2)})</Text>
-            </View>
-          </View>
+        {/* Coupon */}
+        <Text style={styles.sectionTitle}>Have a coupon?</Text>
+        <View style={styles.couponContainer}>
+          <TextInput
+            style={styles.couponInput}
+            placeholder="Enter code"
+            value={couponCode}
+            onChangeText={setCouponCode}
+            editable={!isCouponApplied}
+          />
+          <TouchableOpacity 
+            style={styles.applyButton}
+            onPress={isCouponApplied ? removeCoupon : applyCoupon}
+          >
+            <Text style={styles.applyButtonText}>
+              {isCouponApplied ? 'Remove' : 'Apply'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Pay With Section */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Pay with :</Text>
-          
-          {paymentMethods.map((method) => (
-            <TouchableOpacity
-              key={method.id}
-              style={[
-                styles.paymentOption,
-                selectedPaymentMethod === method.id && styles.paymentOptionSelected
-              ]}
-              onPress={() => setSelectedPaymentMethod(method.id)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.radioButton}>
-                <View style={styles.radioCircle}>
-                  {selectedPaymentMethod === method.id && (
-                    <View style={styles.radioCircleFilled} />
-                  )}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.paymentMethodText}>{method.label}</Text>
-                  <Text style={styles.paymentMethodSubtext}>
-                    {method.id === 'RAZORPAY' ? 'Pay in INR (₹) - Indian Rupees' : 'Pay in NPR (रू) - Nepali Rupees'}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Coupon Section */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Have a coupon?</Text>
-          
-          {!isCouponApplied ? (
-            <View>
-              <View style={styles.couponInputContainer}>
-                <TextInput
-                  style={styles.couponInput}
-                  placeholder="Enter coupon code"
-                  value={couponCode}
-                  onChangeText={setCouponCode}
-                  autoCapitalize="characters"
-                  editable={!couponLoading}
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.applyCouponButton,
-                    couponLoading && styles.applyCouponButtonDisabled
-                  ]}
-                  onPress={applyCoupon}
-                  disabled={couponLoading}
-                  activeOpacity={0.7}
-                >
-                  {couponLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.applyCouponButtonText}>Apply</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.appliedCouponContainer}>
-              <View style={styles.appliedCouponInfo}>
-                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                <Text style={styles.appliedCouponText}>
-                  Coupon '{appliedCouponCode}' applied
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.removeCouponButton}
-                onPress={removeCoupon}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.removeCouponButtonText}>Remove</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Bottom spacing */}
+        {/* Bottom Spacer */}
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Pay Button */}
-      <View style={styles.buttonWrapper}>
+      {/* Confirm Button */}
+      <View style={styles.footer}>
         <TouchableOpacity
-          style={[
-            styles.payButton,
-            paymentLoading && styles.payButtonDisabled
-          ]}
-          activeOpacity={0.8}
+          style={styles.confirmButton}
           onPress={handlePayment}
           disabled={paymentLoading}
         >
           {paymentLoading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.payButtonText}>
-              Pay NPR {Number(totalAmountNpr || 0).toFixed(2)} (₹ {Number(totalAmountInr || 0).toFixed(2)})
-            </Text>
+            <Text style={styles.confirmButtonText}>Confirm Booking</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -1326,7 +1241,7 @@ const PaymentScreen = ({ navigation, route }) => {
             <TouchableOpacity
               style={styles.webViewCloseButton}
               onPress={() => {
-                setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+                setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null });
                 setPaymentLoading(false);
               }}
             >
@@ -1345,21 +1260,10 @@ const PaymentScreen = ({ navigation, route }) => {
                 <Text style={styles.errorMessage}>{showWebView.error}</Text>
               </View>
               
-              {showWebView.debugInfo && (
-                <View style={styles.debugBox}>
-                  <Text style={styles.debugTitle}>Debug Information:</Text>
-                  {Object.entries(showWebView.debugInfo).map(([key, value]) => (
-                    <Text key={key} style={styles.debugText}>
-                      {key}: {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                    </Text>
-                  ))}
-                </View>
-              )}
-              
               <TouchableOpacity 
                 style={styles.retryButton}
                 onPress={() => {
-                  setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null, debugInfo: null });
+                  setShowWebView({ visible: false, html: '', uri: null, paymentData: null, token: null, error: null });
                   setPaymentLoading(false);
                 }}
               >
@@ -1385,8 +1289,7 @@ const PaymentScreen = ({ navigation, route }) => {
                 console.error('❌ WebView error:', nativeEvent);
                 setShowWebView(prev => ({
                   ...prev,
-                  error: `WebView Error: ${nativeEvent.description || nativeEvent.code || 'Unknown error'}`,
-                  debugInfo: { ...prev.debugInfo, webViewError: nativeEvent }
+                  error: `WebView Error: ${nativeEvent.description || nativeEvent.code || 'Unknown error'}`
                 }));
               }}
               onHttpError={(syntheticEvent) => {
@@ -1396,8 +1299,7 @@ const PaymentScreen = ({ navigation, route }) => {
                 if (!nativeEvent.url?.startsWith('esewa://')) {
                   setShowWebView(prev => ({
                     ...prev,
-                    error: `HTTP Error ${nativeEvent.statusCode}: ${nativeEvent.description || 'Request failed'}`,
-                    debugInfo: { ...prev.debugInfo, httpError: nativeEvent }
+                    error: `HTTP Error ${nativeEvent.statusCode}: ${nativeEvent.description || 'Request failed'}`
                   }));
                 }
               }}
@@ -1433,181 +1335,153 @@ const PaymentScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Very light off-white
+    backgroundColor: '#FFFFFF',
   },
-  
-  // Header Styles
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    alignItems: 'center',
+    paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FAFAFA',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    letterSpacing: 0.3,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
   },
-  headerPlaceholder: {
-    width: 40,
+  seatCountText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
   },
-
-  // Scroll View
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-
-  // Card Styles
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 16,
-  },
-
-  // Fare Row Styles
-  fareRow: {
+  seatCard: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 12,
+    padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 24,
   },
-  fareLabel: {
-    fontSize: 15,
-    color: '#6B7280',
-    fontWeight: '400',
+  seatNumberText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#4F46E5',
+    marginBottom: 4,
   },
-  fareAmount: {
-    fontSize: 15,
-    color: '#1F2937',
-    fontWeight: '600',
-  },
-  subtleText: {
+  seatTypeText: {
     fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
+    color: '#6366F1',
+    fontWeight: '500',
+    textTransform: 'uppercase',
   },
-
-  // Divider
+  seatPriceText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
   divider: {
     height: 1,
     backgroundColor: '#E5E7EB',
-    marginVertical: 12,
+    marginVertical: 16,
   },
-
-  // Total Row
+  pointContainer: {
+    marginBottom: 16,
+  },
+  pointLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  pointName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  pointTime: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  subtotalLabel: {
+    fontSize: 15,
+    color: '#374151',
+  },
+  subtotalValue: {
+    fontSize: 15,
+    color: '#374151',
+    fontWeight: '600',
+  },
   totalLabel: {
-    fontSize: 16,
-    color: '#1F2937',
-    fontWeight: '700',
-  },
-  totalAmount: {
     fontSize: 18,
-    color: '#1F2937',
-    fontWeight: '700',
+    fontWeight: '800',
+    color: '#111827',
   },
-
-  // Payment Option Styles
-  paymentOption: {
+  totalValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#4F46E5',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  paymentMethodCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
+    backgroundColor: '#FFFFFF',
   },
-  paymentOptionSelected: {
-    borderColor: '#3B82F6',
-    backgroundColor: '#EFF6FF',
+  paymentMethodCardSelected: {
+    borderColor: '#4F46E5',
+    backgroundColor: '#EEF2FF',
   },
-  radioButton: {
+  paymentMethodLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
-  radioCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#3B82F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  radioCircleFilled: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#3B82F6',
-  },
-  paymentMethodText: {
+  paymentMethodName: {
     fontSize: 15,
-    color: '#1F2937',
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#374151',
   },
-  paymentMethodSubtext: {
-    fontSize: 12,
+  paymentMethodNameSelected: {
+    color: '#4F46E5',
+  },
+  paymentMethodAmount: {
+    fontSize: 14,
     color: '#6B7280',
-    marginTop: 2,
   },
-
-  // Pay Button
-  buttonWrapper: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FAFAFA',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: 20,
-    alignItems: 'center',
+  paymentMethodAmountSelected: {
+    color: '#4F46E5',
+    fontWeight: '600',
   },
-  payButton: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 20,
-    height: 44,
-    width: '70%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  payButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  payButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-
-  // Coupon Styles
-  couponInputContainer: {
+  couponContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
   },
   couponInput: {
@@ -1616,69 +1490,44 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#1F2937',
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#111827',
   },
-  applyCouponButton: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 8,
+  applyButton: {
+    backgroundColor: '#E5E7EB',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    minWidth: 70,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  applyCouponButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  applyCouponButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  appliedCouponContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
     borderRadius: 8,
-    padding: 12,
   },
-  appliedCouponInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  appliedCouponText: {
-    color: '#10B981',
+  applyButtonText: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#374151',
   },
-  removeCouponButton: {
-    backgroundColor: '#EF4444',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
-  removeCouponButtonText: {
+  confirmButton: {
+    backgroundColor: '#4F46E5',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  confirmButtonText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
   },
-
-  // Discount styles
-  discountLabel: {
-    color: '#10B981',
-  },
-  discountAmount: {
-    color: '#10B981',
-  },
-
-  // WebView styles for eSewa
+  // ... Keep existing WebView and Debug styles ...
   webViewContainer: {
     position: 'absolute',
     top: 0,
@@ -1728,8 +1577,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#60BB46',
   },
-  
-  // Error display styles
   errorContainer: {
     flex: 1,
     backgroundColor: '#FEF2F2',
@@ -1789,8 +1636,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  
-  // On-screen debug overlay
   debugOverlay: {
     position: 'absolute',
     top: 100,

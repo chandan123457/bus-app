@@ -22,8 +22,17 @@ const BoardingPointsScreen = ({ navigation, route }) => {
   console.log('==========================================');
   
   const { busInfo, selectedSeats = [], busData } = route.params || {};
-  
-  const [actualSelectedSeats, setActualSelectedSeats] = useState(selectedSeats);
+
+  const normalizeSeat = (seat) => {
+    if (!seat) return seat;
+    const deck = (seat.deck || seat.level || 'LOWER').toString().toUpperCase();
+    const seatNumber = seat.seatNumber || seat.number || seat.seat_no || seat.id;
+    return { ...seat, deck, seatNumber };
+  };
+
+  const [actualSelectedSeats, setActualSelectedSeats] = useState(() =>
+    (selectedSeats || []).map(normalizeSeat)
+  );
   const [selectedBoardingPoint, setSelectedBoardingPoint] = useState(null);
   const [selectedDroppingPoint, setSelectedDroppingPoint] = useState(null);
 
@@ -42,8 +51,9 @@ const BoardingPointsScreen = ({ navigation, route }) => {
         .then(backupData => {
           if (backupData) {
             const parsedSeats = JSON.parse(backupData);
-            console.log('Recovered seats from AsyncStorage:', parsedSeats);
-            setActualSelectedSeats(parsedSeats);
+            const normalizedSeats = (parsedSeats || []).map(normalizeSeat);
+            console.log('Recovered seats from AsyncStorage:', normalizedSeats);
+            setActualSelectedSeats(normalizedSeats);
           } else {
             console.log('No backup seats found in AsyncStorage');
           }
