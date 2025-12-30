@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { busAPI } from '../services/api';
@@ -38,10 +39,11 @@ const SeatSelectionScreen = ({ navigation, route }) => {
   const [seatStates, setSeatStates] = useState({});
   const [seatMapping, setSeatMapping] = useState({}); // Maps seat number to seat object with ID
   
-  // Fetch seat data from API on component mount
-  useEffect(() => {
-    fetchSeatData();
-  }, []);
+  // Re-fetch whenever these inputs change (e.g. when user searches a different date
+  // and navigates back to an existing SeatSelection screen instance).
+  const routeTripId = busData?.tripId || route.params?.tripId;
+  const routeFromStopId = busData?.fromStopId || route.params?.fromStopId || route.params?.fromStop?.id;
+  const routeToStopId = busData?.toStopId || route.params?.toStopId || route.params?.toStop?.id;
   
   const fetchSeatData = async () => {
     try {
@@ -211,6 +213,16 @@ const SeatSelectionScreen = ({ navigation, route }) => {
       setIsLoading(false);
     }
   };
+
+  // Always refresh seat availability when the screen is focused. This ensures:
+  // - changing travel date (new tripId) shows correct booked/available seats
+  // - coming back after another user books seats refreshes current availability
+  useFocusEffect(
+    useCallback(() => {
+      fetchSeatData();
+      return () => {};
+    }, [routeTripId, routeFromStopId, routeToStopId])
+  );
 
   const handleSeatPress = (seatId) => {
     if (seatStates[seatId] === 'booked') return; // Can't select booked seats
