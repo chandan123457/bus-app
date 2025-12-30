@@ -27,6 +27,8 @@ import RazorpayCheckout from 'react-native-razorpay';
 const NPR_TO_INR_RATE = 0.625;
 const convertNprToInr = (nprAmount) => Number((Number(nprAmount || 0) * NPR_TO_INR_RATE).toFixed(2));
 
+const roundToTwo = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+
 const PaymentScreen = ({ navigation, route }) => {
   const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
   const [userEmail, setUserEmail] = useState('');
@@ -269,6 +271,90 @@ const PaymentScreen = ({ navigation, route }) => {
   const perSeatFareNpr = Number(busData?.priceNpr ?? busData?.price ?? busData?.tripData?.fare ?? busData?.tripData?.price ?? 0);
   const perSeatFareInr = convertNprToInr(perSeatFareNpr);
 
+  const getSeatFareNpr = (seat) => {
+    // Prefer per-seat price computed in Seat Selection.
+    const explicitSeatPrice = Number(seat?.priceNpr);
+    if (Number.isFinite(explicitSeatPrice)) return explicitSeatPrice;
+
+    const fromStop = route.params?.busInfo?.route?.fromStop;
+    const toStop = route.params?.busInfo?.route?.toStop;
+    if (!fromStop || !toStop) return 0;
+
+    const level = String(seat?.level || seat?.deck || '').toUpperCase();
+    const type = String(seat?.type || '').toUpperCase();
+
+    // Upper deck sitting seats: treat as free (no upper seater price field in backend stop model).
+    if (level === 'UPPER' && type === 'SEATER') return 0;
+
+    if (level === 'LOWER' && type === 'SEATER') {
+      return Math.abs(Number(toStop.lowerSeaterPrice || 0) - Number(fromStop.lowerSeaterPrice || 0));
+    }
+    if (level === 'LOWER' && type === 'SLEEPER') {
+      return Math.abs(Number(toStop.lowerSleeperPrice || 0) - Number(fromStop.lowerSleeperPrice || 0));
+    }
+    if (level === 'UPPER' && type === 'SLEEPER') {
+      return Math.abs(Number(toStop.upperSleeperPrice || 0) - Number(fromStop.upperSleeperPrice || 0));
+    }
+
+    return 0;
+  };
+
+  const seatLineItems = actualSelectedSeats.map((seat, index) => {
+    const seatLabel = seat?.seatNumber ? `Seat ${seat.seatNumber}` : `Seat ${index + 1}`;
+    const deckLabel = (seat?.deck || seat?.level || 'LOWER').toString().toUpperCase();
+    const typeLabel = (seat?.type || 'SEATER').toString().toUpperCase();
+    const fareNpr = getSeatFareNpr(seat);
+    return { seatLabel, deckLabel, typeLabel, fareNpr };
+  });
+
+  const getCumulativePriceForSeat = (stop, seat) => {
+    if (!stop || !seat) return 0;
+
+    const level = String(seat.level || seat.deck || '').toUpperCase();
+    const type = String(seat.type || '').toUpperCase();
+
+    if (level === 'LOWER' && type === 'SEATER') {
+      return Number(stop.lowerSeaterPrice ?? stop.priceFromOrigin ?? 0);
+    }
+    if (level === 'LOWER' && type === 'SLEEPER') {
+      return Number(stop.lowerSleeperPrice ?? stop.priceFromOrigin ?? 0);
+    }
+    if (level === 'UPPER' && type === 'SLEEPER') {
+      return Number(stop.upperSleeperPrice ?? stop.priceFromOrigin ?? 0);
+    }
+    if (level === 'UPPER' && type === 'SEATER') {
+      // No upperSeaterPrice field in backend - Upper Deck SEATER seats are FREE
+      return 0;
+    }
+
+    return Number(stop.priceFromOrigin ?? 0);
+  };
+
+  const computeSeatTypeTotalNpr = () => {
+    const fromStop = route.params?.busInfo?.route?.fromStop;
+    const toStop = route.params?.busInfo?.route?.toStop;
+
+    if (!fromStop || !toStop || !Array.isArray(actualSelectedSeats) || actualSelectedSeats.length === 0) {
+      return 0;
+    }
+
+    const total = actualSelectedSeats.reduce((sum, seat) => {
+      const fromPrice = getCumulativePriceForSeat(fromStop, seat);
+      const toPrice = getCumulativePriceForSeat(toStop, seat);
+
+      const seatSpecificFare = Math.abs(Number(toPrice) - Number(fromPrice));
+      const fallbackFare = Math.abs(
+        Number(toStop.priceFromOrigin ?? 0) - Number(fromStop.priceFromOrigin ?? 0)
+      );
+
+      const fare = Number.isFinite(seatSpecificFare) && seatSpecificFare > 0 ? seatSpecificFare : fallbackFare;
+      const normalizedFare = Number.isFinite(fare) ? fare : 0;
+      return sum + normalizedFare;
+    }, 0);
+
+    return roundToTwo(total);
+  };
+
   // If the backend already sent a total fare for the selected seats, prefer it; otherwise compute locally.
   const backendTotalNpr = Number(
     route.params?.backendTotalFareNpr ??
@@ -281,7 +367,14 @@ const PaymentScreen = ({ navigation, route }) => {
     0
   );
 
-  const computedBaseFareNpr = seatCount > 0 ? seatCount * perSeatFareNpr : 0;
+  const computedSeatsTotalNpr = roundToTwo(
+    seatLineItems.reduce((sum, item) => sum + (Number.isFinite(Number(item.fareNpr)) ? Number(item.fareNpr) : 0), 0)
+  );
+
+  const computedBaseFareNpr = computedSeatsTotalNpr > 0 || seatLineItems.length > 0
+    ? computedSeatsTotalNpr
+    : (seatCount > 0 ? seatCount * perSeatFareNpr : 0);
+
   const baseFareNpr = backendTotalNpr > 0 ? backendTotalNpr : computedBaseFareNpr;
   const baseFareInr = convertNprToInr(baseFareNpr);
 
@@ -304,6 +397,8 @@ const PaymentScreen = ({ navigation, route }) => {
   const [paymentUrl, setPaymentUrl] = useState('');
   const [currentPaymentId, setCurrentPaymentId] = useState('');
   const [authToken, setAuthToken] = useState('');
+  // Used by eSewa flow for debugging/progress messages.
+  const [, setDebugMessage] = useState(null);
   const [showWebView, setShowWebView] = useState({ 
     visible: false, 
     html: '', 
@@ -456,19 +551,21 @@ const PaymentScreen = ({ navigation, route }) => {
       console.log('Extracted seat IDs:', actualSeatIds);
       console.log('Processed passengers:', actualPassengers);
 
-      // Extract boarding and dropping points from the trip data or route params
-      const actualBoardingPointId = route.params?.boardingPoint?.id ||
-        busData.tripData?.fromStop?.boardingPoints?.[0]?.id || 
-        '12345678-1234-5678-9abc-123456789abe';
-      
-      const actualDroppingPointId = route.params?.droppingPoint?.id ||
-        busData.tripData?.toStop?.boardingPoints?.[0]?.id || 
-        '12345678-1234-5678-9abc-123456789abf';
+      // Extract boarding and dropping points (do NOT use dummy IDs)
+      const actualBoardingPointId =
+        route.params?.boardingPoint?.id ||
+        route.params?.busInfo?.route?.fromStop?.boardingPoints?.[0]?.id ||
+        busData.tripData?.fromStop?.boardingPoints?.[0]?.id;
+
+      const actualDroppingPointId =
+        route.params?.droppingPoint?.id ||
+        route.params?.busInfo?.route?.toStop?.boardingPoints?.[0]?.id ||
+        busData.tripData?.toStop?.boardingPoints?.[0]?.id;
 
       const paymentData = {
         tripId: getTripIdForRequests(),
-        fromStopId: busData.fromStopId || busData.tripData?.fromStop?.id,
-        toStopId: busData.toStopId || busData.tripData?.toStop?.id,
+        fromStopId: route.params?.busInfo?.route?.fromStop?.id || busData.fromStopId || busData.tripData?.fromStop?.id,
+        toStopId: route.params?.busInfo?.route?.toStop?.id || busData.toStopId || busData.tripData?.toStop?.id,
         seatIds: actualSeatIds,
         passengers: actualPassengers,
         paymentMethod: selectedPaymentMethod,
@@ -499,6 +596,12 @@ const PaymentScreen = ({ navigation, route }) => {
       }
       if (!paymentData.toStopId) {
         throw new Error('To Stop ID is missing');
+      }
+      if (!paymentData.boardingPointId) {
+        throw new Error('Boarding point is missing');
+      }
+      if (!paymentData.droppingPointId) {
+        throw new Error('Dropping point is missing');
       }
       if (!paymentData.seatIds.length || paymentData.seatIds.some(id => !id)) {
         throw new Error('Valid seat IDs are missing. Please go back and select seats again.');
@@ -608,22 +711,15 @@ const PaymentScreen = ({ navigation, route }) => {
         const confirmed = await confirmBookingForPayment(paymentData.paymentId, token);
         const emailNote = await getEmailStatusNote();
 
-        Alert.alert(
-          'Payment Successful! ✅',
-          `Your booking has been confirmed!\n\nBooking Group ID: ${confirmed.bookingGroupId}${emailNote}`,
-          [
-            {
-              text: 'View My Bookings',
-              onPress: () => {
-                // Navigate to My Bookings
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Bookings' }],
-                });
-              },
-            },
-          ]
-        );
+        // Redirect automatically to Home after payment success
+        navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+        setTimeout(() => {
+          Alert.alert(
+            'Payment Successful! ✅',
+            `Your booking has been confirmed!\n\nBooking Group ID: ${confirmed.bookingGroupId}${emailNote}`,
+            [{ text: 'OK' }]
+          );
+        }, 300);
       } else {
         throw new Error(verificationResponse.error || 'Payment verification failed');
       }
@@ -695,22 +791,15 @@ const PaymentScreen = ({ navigation, route }) => {
         const confirmed = await confirmBookingForPayment(paymentData.paymentId, token);
         const emailNote = await getEmailStatusNote();
 
-        Alert.alert(
-          'Payment Successful! ✅',
-          `Your booking has been confirmed!\n\nBooking Group ID: ${confirmed.bookingGroupId}${emailNote}`,
-          [
-            {
-              text: 'View My Bookings',
-              onPress: () => {
-                // Navigate to My Bookings
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Bookings' }],
-                });
-              },
-            },
-          ]
-        );
+        // Redirect automatically to Home after payment success
+        navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+        setTimeout(() => {
+          Alert.alert(
+            'Payment Successful! ✅',
+            `Your booking has been confirmed!\n\nBooking Group ID: ${confirmed.bookingGroupId}${emailNote}`,
+            [{ text: 'OK' }]
+          );
+        }, 300);
       } else {
         throw new Error('Payment verification failed');
       }
@@ -1010,14 +1099,15 @@ const PaymentScreen = ({ navigation, route }) => {
           setPaymentLoading(false);
           setDebugMessage(null);
 
-          Alert.alert(
-            'Payment Successful! ✅',
-            `Your booking has been confirmed!\n\nBooking Group ID: ${confirmed.bookingGroupId}${emailNote}`,
-            [{
-              text: 'View My Bookings',
-              onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Bookings' }] })
-            }]
-          );
+          // Redirect automatically to Home after payment success
+          navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+          setTimeout(() => {
+            Alert.alert(
+              'Payment Successful! ✅',
+              `Your booking has been confirmed!\n\nBooking Group ID: ${confirmed.bookingGroupId}${emailNote}`,
+              [{ text: 'OK' }]
+            );
+          }, 300);
           return;
         } catch (confirmError) {
           console.error('❌ Booking confirmation failed after eSewa verification:', confirmError);
@@ -1115,15 +1205,25 @@ const PaymentScreen = ({ navigation, route }) => {
       >
         {/* Seat Card */}
         <View style={styles.seatCard}>
-          <View>
-            <Text style={styles.seatNumberText}>
-              Seat {actualSelectedSeats.map(seat => `${seat?.seatNumber || ''} (${seat?.deck || 'LOWER'})`).join(', ')}
-            </Text>
-            <Text style={styles.seatTypeText}>
-              {actualSelectedSeats[0]?.type || 'SEATER'} • {actualSelectedSeats[0]?.deck || 'LOWER'}
-            </Text>
-          </View>
-          <Text style={styles.seatPriceText}>₹{Number(baseFareInr).toFixed(2)}</Text>
+          {seatLineItems.length > 0 ? (
+            seatLineItems.map((item, index) => (
+              <View
+                key={`seat-item-${index}`}
+                style={[
+                  styles.seatLineItemRow,
+                  index === seatLineItems.length - 1 && styles.seatLineItemRowLast,
+                ]}
+              >
+                <View style={styles.seatLineItemLeft}>
+                  <Text style={styles.seatNumberText}>{item.seatLabel}</Text>
+                  <Text style={styles.seatTypeText}>{item.deckLabel} • {item.typeLabel}</Text>
+                </View>
+                <Text style={styles.seatPriceText}>₹{Number(convertNprToInr(item.fareNpr)).toFixed(2)}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.seatNumberText}>No seats selected</Text>
+          )}
         </View>
 
         <View style={styles.divider} />
@@ -1365,21 +1465,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF2FF',
     borderRadius: 12,
     padding: 16,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    marginBottom: 24,
+  },
+  seatLineItemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 12,
+  },
+  seatLineItemRowLast: {
+    marginBottom: 0,
+  },
+  seatLineItemLeft: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  seatDetails: {
+    flex: 1,
+    paddingRight: 12,
   },
   seatNumberText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#4F46E5',
     marginBottom: 4,
+    lineHeight: 22,
   },
   seatTypeText: {
     fontSize: 12,
     color: '#6366F1',
     fontWeight: '500',
+    marginTop: 2,
     textTransform: 'uppercase',
   },
   seatPriceText: {

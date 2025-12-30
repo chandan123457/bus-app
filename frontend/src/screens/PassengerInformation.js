@@ -17,6 +17,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+const NPR_TO_INR_RATE = 0.625;
+const convertNprToInr = (nprAmount) => Number((Number(nprAmount || 0) * NPR_TO_INR_RATE).toFixed(2));
+
 const PassengerInformation = ({ navigation, route }) => {
   console.log('=== PASSENGERINFO RECEIVED DATA DEBUG ===');
   console.log('Full route.params:', JSON.stringify(route.params, null, 2));
@@ -130,6 +133,88 @@ const PassengerInformation = ({ navigation, route }) => {
   // Add safety check for rendering - only render if arrays are in sync
   const shouldRenderPassengerForms = passengers.length > 0 && passengers.length === actualSelectedSeats.length;
 
+  const seatLines = (actualSelectedSeats || [])
+    .map((seat) => {
+      const seatNumber = seat?.seatNumber || '';
+      if (!seatNumber) return null;
+      return `${seatNumber} (${seat?.deck || 'LOWER'})`;
+    })
+    .filter(Boolean);
+
+  const roundToTwo = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+
+  const getCumulativePriceForSeat = (stop, seat) => {
+    if (!stop || !seat) return 0;
+
+    const level = String(seat.level || seat.deck || '').toUpperCase();
+    const type = String(seat.type || '').toUpperCase();
+
+    if (level === 'LOWER' && type === 'SEATER') {
+      return Number(stop.lowerSeaterPrice ?? stop.priceFromOrigin ?? 0);
+    }
+    if (level === 'LOWER' && type === 'SLEEPER') {
+      return Number(stop.lowerSleeperPrice ?? stop.priceFromOrigin ?? 0);
+    }
+    if (level === 'UPPER' && type === 'SLEEPER') {
+      return Number(stop.upperSleeperPrice ?? stop.priceFromOrigin ?? 0);
+    }
+    if (level === 'UPPER' && type === 'SEATER') {
+      // No upperSeaterPrice field in backend - Upper Deck SEATER seats are FREE
+      return 0;
+    }
+
+    return Number(stop.priceFromOrigin ?? 0);
+  };
+
+  const computeTotalFareNpr = () => {
+    const fromStop = busInfo?.route?.fromStop;
+    const toStop = busInfo?.route?.toStop;
+
+    // Prefer per-seat prices computed during Seat Selection (keeps pricing consistent across screens).
+    if (Array.isArray(actualSelectedSeats) && actualSelectedSeats.length > 0) {
+      const seatPriceSum = actualSelectedSeats.reduce((sum, seat) => {
+        const seatPrice = Number(seat?.priceNpr);
+        return sum + (Number.isFinite(seatPrice) ? seatPrice : 0);
+      }, 0);
+      if (seatPriceSum > 0 || actualSelectedSeats.some(s => Number(s?.priceNpr) === 0)) {
+        return roundToTwo(seatPriceSum);
+      }
+    }
+
+    // Prefer seat-type segment pricing (matches backend prepareBookingDetails)
+    if (fromStop && toStop && Array.isArray(actualSelectedSeats) && actualSelectedSeats.length > 0) {
+      const total = actualSelectedSeats.reduce((sum, seat) => {
+        const fromPrice = getCumulativePriceForSeat(fromStop, seat);
+        const toPrice = getCumulativePriceForSeat(toStop, seat);
+
+        const seatSpecificFare = Math.abs(Number(toPrice) - Number(fromPrice));
+        const fallbackFare = Math.abs(
+          Number(toStop.priceFromOrigin ?? 0) - Number(fromStop.priceFromOrigin ?? 0)
+        );
+
+        const fare = Number.isFinite(seatSpecificFare) && seatSpecificFare > 0 ? seatSpecificFare : fallbackFare;
+        const normalizedFare = Number.isFinite(fare) ? fare : 0;
+        return sum + normalizedFare;
+      }, 0);
+
+      return roundToTwo(total);
+    }
+
+    // Fallback: seatCount × perSeatFare
+    const perSeatFareNpr = Number(busData?.priceNpr ?? busData?.price ?? busData?.tripData?.fare ?? busData?.tripData?.price ?? 0);
+    const seatCount = Array.isArray(actualSelectedSeats) ? actualSelectedSeats.length : 0;
+    return roundToTwo(seatCount * perSeatFareNpr);
+  };
+
+  const totalFareNpr = computeTotalFareNpr();
+  const totalFareInr = convertNprToInr(totalFareNpr);
+
+  const seatsSelectedText = seatLines.length === 0 
+    ? 'No seats selected'
+    : seatLines.length === 1
+    ? `Seat: ${seatLines[0]}`
+    : `Seats:\n${seatLines.join('\n')}`;
+
   const updatePassenger = (index, field, value) => {
     // Safety check to ensure passenger exists at index
     if (!passengers[index]) {
@@ -188,6 +273,9 @@ const PassengerInformation = ({ navigation, route }) => {
       busInfo: busInfo,
       boardingPoint: boardingPoint,
       droppingPoint: droppingPoint,
+      // Use a backend-aligned total so Payment and Confirm Booking always match.
+      backendTotalFareNpr: totalFareNpr,
+      totalFareNpr: totalFareNpr,
     });
   };
 
@@ -220,8 +308,9 @@ const PassengerInformation = ({ navigation, route }) => {
                 <Text style={styles.busDetails}>
                   {busData.type} | {busData.departureTime}
                 </Text>
-                <Text style={styles.seatsSelected}>
-                  Seats: {actualSelectedSeats.map(seat => `${seat?.seatNumber || ''} (${seat?.deck || 'LOWER'})`).join(', ')}
+                <Text style={styles.seatsSelected}>{seatsSelectedText}</Text>
+                <Text style={styles.totalFareText}>
+                  Total: NPR {Number(totalFareNpr).toFixed(2)} (₹ {Number(totalFareInr).toFixed(2)})
                 </Text>
               </View>
               
@@ -401,6 +490,16 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 12,
     marginTop: 2,
+    textAlign: 'center',
+    lineHeight: 18,
+    minHeight: 18,
+  },
+
+  totalFareText: {
+    color: 'rgba(255, 255, 255, 0.95)',
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: 'center',
   },
 
   // Scroll View - Positioned absolutely to overlap image

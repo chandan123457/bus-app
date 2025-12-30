@@ -249,7 +249,13 @@ const ProfileScreen = ({ navigation }) => {
                 editable={!saving}
               />
             ) : (
-              <Text style={styles.infoValue}>{detail.value}</Text>
+              <Text
+                style={styles.infoValue}
+                numberOfLines={detail.id === 'email' ? 1 : undefined}
+                ellipsizeMode={detail.id === 'email' ? 'tail' : undefined}
+              >
+                {detail.value}
+              </Text>
             )}
           </View>
         </View>
@@ -306,10 +312,6 @@ const ProfileScreen = ({ navigation }) => {
         >
           <View style={styles.heroOverlay} />
           <SafeAreaView edges={['top']} style={styles.heroInner}>
-            <View style={styles.heroBrandRow}>
-              <Image source={require('../../assets/logo.png')} style={styles.brandLogo} />
-              <Text style={styles.brandTagline}>Your Journey Partner</Text>
-            </View>
             <Text style={styles.heroTitle}>My Profile</Text>
             <Text style={styles.heroSubtitle}>Manage your account information</Text>
           </SafeAreaView>
@@ -568,8 +570,10 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
     fontSize: 13,
-    lineHeight: 18,
-    flexShrink: 1,
+    lineHeight: 16,
+    flexWrap: 'nowrap',
+    textAlign: 'left',
+    overflow: 'hidden',
   },
   verificationPill: {
     flexDirection: 'row',

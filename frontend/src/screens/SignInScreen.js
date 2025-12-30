@@ -160,9 +160,8 @@ const SignInScreen = ({ navigation, route }) => {
           setError('Invalid credentials. Please verify your email first before signing in. Check your email for the verification OTP sent during signup.');
         } else {
           setError(errorMessage);
-          if (errorMessage.includes('Cannot connect to server')) {
-            Alert.alert('Connection Error', errorMessage);
-          } else {
+          // Avoid noisy alerts for known server-down scenario; the inline error is enough.
+          if (errorMessage !== 'Server is down. Please try again later.') {
             Alert.alert('Sign In Failed', errorMessage);
           }
         }
@@ -170,9 +169,22 @@ const SignInScreen = ({ navigation, route }) => {
     } catch (err) {
       // This should rarely happen since userAPI.signin doesn't throw
       console.error('Unexpected signin error:', err);
-      const errorMessage = `Unexpected error: ${err.message}`;
+      const serverDownMessage = 'Server is down. Please try again later.';
+      const rawMessage = (err?.message || '').toLowerCase();
+      const isServerDown =
+        !rawMessage ||
+        rawMessage.includes('network') ||
+        rawMessage.includes('failed to fetch') ||
+        rawMessage.includes('timeout') ||
+        rawMessage.includes('econnrefused') ||
+        rawMessage.includes('enotfound') ||
+        rawMessage.includes('cannot connect');
+
+      const errorMessage = isServerDown ? serverDownMessage : `Unexpected error: ${err.message}`;
       setError(errorMessage);
-      Alert.alert('Error', errorMessage);
+      if (!isServerDown) {
+        Alert.alert('Error', errorMessage);
+      }
     } finally {
       setLoading(false);
     }

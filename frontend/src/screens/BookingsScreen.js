@@ -11,13 +11,13 @@ import {
   Alert,
   Dimensions,
   ImageBackground,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 import API_BASE_URL, { API_ENDPOINTS } from '../config/api';
 import { userAPI } from '../services/api';
 import testMyBookingsAPI from '../utils/testAPI';
@@ -189,24 +189,64 @@ const BookingsScreen = ({ navigation }) => {
       }
 
       setDownloadingId(booking.bookingGroupId);
+      // Backend returns a PDF buffer with Content-Type: application/pdf
+      // GET /user/booking/download-ticket/:groupId (Authorization: Bearer <token>)
       const downloadUrl = `${API_BASE_URL}${API_ENDPOINTS.DOWNLOAD_TICKET}/${booking.bookingGroupId}`;
-      
-      const directory = FileSystem.cacheDirectory || FileSystem.documentDirectory;
-      
-      if (!directory) {
-        throw new Error('File system not available');
+
+      const tempDirectory = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+      if (!tempDirectory) {
+        throw new Error('Could not access local storage.');
       }
 
-      const fileUri = `${directory}ticket_${booking.bookingGroupId}.pdf`;
+      const baseFilename = `ticket_${booking.bookingGroupId}.pdf`;
+      const tempFileUri = `${tempDirectory}${baseFilename}`;
 
-      const downloadResult = await FileSystem.downloadAsync(downloadUrl, fileUri, {
+      const downloadResult = await FileSystem.downloadAsync(downloadUrl, tempFileUri, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
       if (downloadResult.status === 200) {
-        await Sharing.shareAsync(downloadResult.uri);
+        // Android: save into a user-selected folder (device storage) using Storage Access Framework
+        if (Platform.OS === 'android' && FileSystem.StorageAccessFramework?.requestDirectoryPermissionsAsync) {
+          const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+          if (permissions.granted) {
+            const filename = `ticket_${booking.bookingGroupId}_${Date.now()}.pdf`;
+            const destinationUri = await FileSystem.StorageAccessFramework.createFileAsync(
+              permissions.directoryUri,
+              filename,
+              'application/pdf'
+            );
+
+            const base64 = await FileSystem.readAsStringAsync(downloadResult.uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+
+            await FileSystem.writeAsStringAsync(destinationUri, base64, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+
+            Alert.alert('Download Complete', 'Ticket saved to your selected folder.');
+            return;
+          }
+        }
+
+        // Fallback: app-local folder (still local storage, inside the app)
+        const ticketsDir = `${FileSystem.documentDirectory || tempDirectory}tickets/`;
+        const dirInfo = await FileSystem.getInfoAsync(ticketsDir);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(ticketsDir, { intermediates: true });
+        }
+
+        let savedUri = `${ticketsDir}${baseFilename}`;
+        const existing = await FileSystem.getInfoAsync(savedUri);
+        if (existing.exists) {
+          savedUri = `${ticketsDir}ticket_${booking.bookingGroupId}_${Date.now()}.pdf`;
+        }
+
+        await FileSystem.copyAsync({ from: downloadResult.uri, to: savedUri });
+        Alert.alert('Download Complete', 'Ticket saved to local storage.');
       } else {
         throw new Error('Download failed');
       }

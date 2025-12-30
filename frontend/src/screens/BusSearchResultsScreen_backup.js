@@ -406,13 +406,23 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
 
             <View style={styles.headerCenter}>
               <Text style={styles.headerRoute}>
-                {from} → {to}
+                {from} To {to}
               </Text>
               <Text style={styles.headerDate}>{date}</Text>
             </View>
 
-            {/* Right spacer to keep center text truly centered */}
-            <View style={styles.headerRightSpacer} />
+            <TouchableOpacity
+              style={styles.changeButton}
+              onPress={handleChange}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.changeText}>CHG</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Breadcrumb/Route Info */}
+          <View style={styles.breadcrumbContainer}>
+            <Text style={styles.breadcrumbText}>{from} → {to}</Text>
           </View>
 
           {/* Main Content Area - Bus Cards */}
@@ -476,33 +486,45 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   headerCenter: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   headerRoute: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
-    textAlign: 'center',
   },
   headerDate: {
     color: 'rgba(255, 255, 255, 0.85)',
     fontSize: 13,
     marginTop: 2,
   },
-  headerRightSpacer: {
-    width: 40,
+  changeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  changeText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  breadcrumbContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    marginTop: 4,
+  },
+  breadcrumbText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+    fontWeight: '500',
   },
   mainCard: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '80%',
+    flex: 1,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    marginTop: -25,
     paddingTop: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
@@ -738,6 +760,513 @@ const styles = StyleSheet.create({
   priceInr: {
     fontSize: 12,
     color: '#64748B',
+  },
+});
+
+export default BusSearchResultsScreen;
+
+          {/* Main Content Area - Bus Cards */}
+          <FlatList
+            data={getDisplayData()}
+            renderItem={renderBusCard}
+            keyExtractor={(item) => item.id}
+            style={styles.busList}
+            contentContainerStyle={styles.busListContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  No buses available
+                </Text>
+                <Text style={styles.emptySubText}>
+                  No buses found from {from} to {to} on {date}.{"\n"}Please try a different route or date.
+                </Text>
+              </View>
+            )}
+          />
+        </SafeAreaView>
+      </ImageBackground>
+    </>
+  );
+};
+
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    width: width,
+    height: height,
+  },
+
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(44, 95, 111, 0.80)',
+  },
+
+  safeArea: {
+    flex: 1,
+  },
+
+  // Header Bar ~60-70px height
+  header: {
+    height: 70,
+    backgroundColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  backArrow: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '400',
+  },
+
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  headerRoute: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+
+  headerDate: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 13,
+    fontWeight: '400',
+    marginTop: 3,
+  },
+
+  changeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  changeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // Breadcrumb/Stops
+  breadcrumbContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    backgroundColor: 'transparent',
+  },
+
+  breadcrumbText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 11,
+    textAlign: 'center',
+    fontWeight: '400',
+  },
+
+  // Filter Tabs - spacing from breadcrumb
+  tabsScrollView: {
+    maxHeight: 60,
+    backgroundColor: 'transparent',
+    marginTop: 8,
+  },
+
+  tabsContainer: {
+    paddingHorizontal: 16,
+  },
+
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    width: 135,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+
+  tabSelected: {
+    backgroundColor: '#5B7EFF',
+    shadowColor: '#5B7EFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+
+  tabText: {
+    color: '#4A4A4A',
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+    textAlign: 'center',
+  },
+
+  tabTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+
+  tabBadge: {
+    backgroundColor: '#E5E7EB',
+    borderRadius: 9,
+    width: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 5,
+  },
+
+  tabBadgeText: {
+    color: '#4A4A4A',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  tabTiming: {
+    color: '#4A4A4A',
+    fontSize: 13,
+    fontWeight: '400',
+    marginLeft: 5,
+  },
+
+  tabTimingSelected: {
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+
+  // Main Content Area
+  busList: {
+    flex: 1,
+    backgroundColor: '#F5F5F5', // Light gray/off-white background
+    marginTop: 16,
+  },
+
+  busListContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 16,
+  },
+
+  // Bus Card Component
+  busCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  // Card Header Row
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  operatorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  operatorLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+
+  operatorLogoImage: {
+    width: 28,
+    height: 28,
+  },
+
+  operatorDetails: {
+    flex: 1,
+  },
+
+  operatorName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+
+  busType: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
+  },
+
+  busMeta: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
+  },
+
+  tagContainer: {
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+
+  tagFastest: {
+    backgroundColor: '#E3F2FF',
+  },
+
+  tagCheapest: {
+    backgroundColor: '#E8F5E9',
+  },
+
+  tagText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  tagTextFastest: {
+    color: '#2196F3',
+  },
+
+  tagTextCheapest: {
+    color: '#4CAF50',
+  },
+
+  // Journey Timeline Row
+  journeyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+
+  journeyPoint: {
+    flexShrink: 0,
+    minWidth: 80,
+    maxWidth: 100,
+  },
+
+  journeyPointLeft: {
+    flexShrink: 0,
+    minWidth: 80,
+    maxWidth: 100,
+    alignItems: 'flex-start',
+  },
+
+  journeyPointRight: {
+    flexShrink: 0,
+    minWidth: 80,
+    maxWidth: 100,
+    alignItems: 'flex-end',
+  },
+
+  journeyTime: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+
+  journeyTimeRight: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    textAlign: 'right',
+  },
+
+  journeyCity: {
+    fontSize: 13,
+    color: '#666666',
+    marginTop: 2,
+    flexWrap: 'nowrap',
+  },
+
+  journeyCityRight: {
+    fontSize: 13,
+    color: '#666666',
+    marginTop: 2,
+    flexWrap: 'nowrap',
+    textAlign: 'right',
+  },
+
+  journeyLine: {
+    flex: 1,
+    marginHorizontal: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 60,
+  },
+
+  dottedLineContainer: {
+    width: '100%',
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  dottedLine: {
+    width: '100%',
+    height: 1,
+    borderStyle: 'dotted',
+    borderWidth: 1,
+    borderColor: '#CCCCCC',
+  },
+
+  busIconContainer: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    top: -11.5,
+  },
+
+  busIcon: {
+    fontSize: 14,
+    color: '#999999',
+    textAlign: 'center',
+  },
+
+  // Divider Line
+  dividerLine: {
+    height: 1,
+    backgroundColor: '#E8E8E8',
+    marginBottom: 12,
+  },
+
+  // Bottom Metadata Row
+  metadataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+
+  // Left: Rating Container (33.333% width)
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '33.333%',
+    justifyContent: 'flex-start',
+  },
+
+  starIcon: {
+    color: '#FFB800',
+    fontSize: 14,
+    marginRight: 4,
+  },
+
+  rating: {
+    fontSize: 13,
+    color: '#1A1A1A',
+    fontWeight: '500',
+  },
+
+  seatsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '33.333%',
+  },
+
+  seatIcon: {
+    fontSize: 14,
+    marginRight: 4,
+    color: '#5B7EFF',
+  },
+
+  seats: {
+    fontSize: 13,
+    color: '#1A1A1A',
+    fontWeight: '500',
+  },
+
+  priceContainer: {
+    width: '33.333%',
+    alignItems: 'flex-end',
+  },
+
+  price: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    textAlign: 'right',
+  },
+
+  priceInr: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    textAlign: 'right',
+  },
+
+  // Empty state styles
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 20,
+  },
+
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+
+  emptySubText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  // Test mode indicator styles
+  testModeIndicator: {
+    backgroundColor: '#FFF3CD',
+    borderColor: '#FFEAA7',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+  },
+
+  testModeText: {
+    color: '#856404',
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });
 

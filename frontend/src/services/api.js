@@ -164,7 +164,7 @@ export const userAPI = {
         
         return {
           success: false,
-          error: `Cannot connect to server.\n\nServer: ${API_BASE_URL}\n\nPlease check:\n✓ Backend server is running\n✓ Device is on the same network\n✓ Firewall allows connections\n✓ IP address is correct`,
+          error: 'Server is down. Please try again later.',
           status: null,
         };
       }

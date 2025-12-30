@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
 
   // Top Image Section
   topImageSection: {
-    height: SCREEN_HEIGHT * 0.18,
+    height: SCREEN_HEIGHT * 0.2,
     width: '100%',
     overflow: 'visible',
   },
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Soft teal overlay - background image clearly visible
+    backgroundColor: 'rgba(44, 95, 111, 0.80)',
   },
   safeHeader: {
     flex: 1,
@@ -157,10 +157,20 @@ const styles = StyleSheet.create({
 
   // Offers List Area
   offersListArea: {
-    flex: 1,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '80%',
     backgroundColor: '#F9FAFB',
-    marginTop: -10, // Start slightly lower for layered/floating effect
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: 'visible',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   scrollView: {
     flex: 1,

@@ -256,6 +256,22 @@ const SeatSelectionScreen = ({ navigation, route }) => {
     };
   };
 
+  const getSeatPriceNpr = (seat) => {
+    const pricing = getJourneySeatPricing();
+    const level = String(seat?.level || seat?.deck || '').toUpperCase();
+    const type = String(seat?.type || '').toUpperCase();
+
+    // Business rule / backend design: no upper seater price field; treat as free.
+    if (level === 'UPPER' && type === 'SEATER') return 0;
+
+    if (level === 'LOWER' && type === 'SEATER') return Number(pricing.lowerSeater || 0);
+    if (level === 'LOWER' && type === 'SLEEPER') return Number(pricing.lowerSleeper || 0);
+    if (level === 'UPPER' && type === 'SLEEPER') return Number(pricing.upperSleeper || 0);
+
+    // Fallback: keep it safe and non-breaking.
+    return 0;
+  };
+
   const renderSeatBox = (seat) => {
     const state = seatStates[seat.id] || (seat.isAvailable ? 'available' : 'booked');
     const isSleeper = String(seat.type || '').toUpperCase() === 'SLEEPER' || Number(seat.rowSpan || 1) > 1 || Number(seat.columnSpan || 1) > 1;
@@ -534,7 +550,17 @@ const SeatSelectionScreen = ({ navigation, route }) => {
               onPress={() => {
                 // Navigate to boarding points with API data
                 const selectedSeatIds = Object.keys(seatStates).filter(key => seatStates[key] === 'selected');
-                const selectedSeatObjects = selectedSeatIds.map(seatId => seatMapping[seatId]).filter(Boolean);
+                const selectedSeatObjects = selectedSeatIds
+                  .map(seatId => {
+                    const seat = seatMapping[seatId];
+                    if (!seat) return null;
+                    const priceNpr = getSeatPriceNpr(seat);
+                    return {
+                      ...seat,
+                      priceNpr,
+                    };
+                  })
+                  .filter(Boolean);
                 
                 console.log('🎯 Selected seat IDs:', selectedSeatIds);
                 console.log('🎯 Selected seat objects:', selectedSeatObjects);
