@@ -17,7 +17,7 @@
 // Use the same IP that Metro/Expo shows (your computer's IP on WiFi)
 // Currently using: 192.168.22.4 (from Metro: exp://192.168.22.4:8081)
 // If your IP changes, update only this line.
-const API_BASE_URL = 'http://192.168.22.4:3000';  // Development: local IP for testing
+const API_BASE_URL = 'http://192.168.23.32:3000';  // Development: local IP for testing
 
 // Log API URL in development for debugging
 if (__DEV__) {

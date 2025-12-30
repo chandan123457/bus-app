@@ -264,7 +264,7 @@ const SeatSelectionScreen = ({ navigation, route }) => {
     const columnSpan = Math.max(1, Number(seat.columnSpan || 1));
 
     const gridColumns = Number(busInfo?.bus?.gridColumns || busInfo?.gridColumns || 4);
-    const gutter = 6;
+    const gutter = 10;
     const containerWidth = seatGridLayout.width || 1;
     const cellSize = Math.floor((containerWidth - (gridColumns - 1) * gutter) / gridColumns);
 
@@ -324,7 +324,7 @@ const SeatSelectionScreen = ({ navigation, route }) => {
     }
 
     const gridColumns = Number(busInfo?.bus?.gridColumns || busInfo?.gridColumns || 4);
-    const gutter = 6;
+    const gutter = 10;
     const containerWidth = seatGridLayout.width || 1;
     const cellSize = Math.floor((containerWidth - (gridColumns - 1) * gutter) / gridColumns);
 
@@ -568,10 +568,7 @@ const SeatSelectionScreen = ({ navigation, route }) => {
               }}
             >
               <Text style={[styles.continueButtonText, isDisabled && styles.continueButtonTextDisabled]}>
-                {selectedSeatCount > 0 
-                  ? `Continue (${selectedSeatCount} seat${selectedSeatCount !== 1 ? 's' : ''} selected)`
-                  : 'Continue Booking'
-                }
+                Continue Booking
               </Text>
             </TouchableOpacity>
           );
@@ -864,7 +861,7 @@ const styles = StyleSheet.create({
     borderWidth: 6,
     borderColor: '#1F2937',
     backgroundColor: '#FFFFFF',
-    padding: 18,
+    padding: 22,
     marginBottom: 10,
   },
   backBox: {
