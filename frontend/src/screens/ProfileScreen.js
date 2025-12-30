@@ -294,23 +294,27 @@ const ProfileScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <ImageBackground
-        source={require('../../assets/landing-background.jpg')}
-        style={styles.heroBackground}
-        resizeMode="cover"
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
       >
-        <View style={styles.heroOverlay} />
-        <SafeAreaView edges={['top']} style={styles.heroInner}>
-          <View style={styles.heroBrandRow}>
-            <Image source={require('../../assets/logo.png')} style={styles.brandLogo} />
-            <Text style={styles.brandTagline}>Your Journey Partner</Text>
-          </View>
-          <Text style={styles.heroTitle}>My Profile</Text>
-          <Text style={styles.heroSubtitle}>Manage your account information</Text>
-        </SafeAreaView>
-      </ImageBackground>
+        <ImageBackground
+          source={require('../../assets/landing-background.jpg')}
+          style={styles.heroBackground}
+          resizeMode="cover"
+        >
+          <View style={styles.heroOverlay} />
+          <SafeAreaView edges={['top']} style={styles.heroInner}>
+            <View style={styles.heroBrandRow}>
+              <Image source={require('../../assets/logo.png')} style={styles.brandLogo} />
+              <Text style={styles.brandTagline}>Your Journey Partner</Text>
+            </View>
+            <Text style={styles.heroTitle}>My Profile</Text>
+            <Text style={styles.heroSubtitle}>Manage your account information</Text>
+          </SafeAreaView>
+        </ImageBackground>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.mainCard}>
           {error && (
             <View style={styles.errorBanner}>
@@ -627,13 +631,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   editActions: {
-    flexDirection: 'row',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
     gap: 8,
   },
   cancelBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 99,
     backgroundColor: '#F1F5F9',
   },
   cancelText: {
@@ -642,11 +647,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   saveBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 99,
     backgroundColor: '#6366F1',
-    minWidth: 60,
+    minWidth: 80,
     alignItems: 'center',
   },
   saveBtnDisabled: {

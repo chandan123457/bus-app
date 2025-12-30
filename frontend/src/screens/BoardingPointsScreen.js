@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(45, 155, 155, 0.85)',
+    backgroundColor: 'rgba(44, 95, 111, 0.80)',
   },
   safeArea: {
     flex: 1,

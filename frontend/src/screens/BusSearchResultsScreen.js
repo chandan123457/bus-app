@@ -389,7 +389,6 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
         source={require('../../assets/landing-background.jpg')}
         style={styles.background}
         resizeMode="cover"
-        blurRadius={2}
       >
         {/* Semi-transparent teal/blue overlay (~75% opacity) */}
         <View style={styles.overlay} />
@@ -525,7 +524,7 @@ const styles = StyleSheet.create({
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(43, 99, 110, 0.85)', // Dark teal overlay matching reference
+    backgroundColor: 'rgba(44, 95, 111, 0.80)',
   },
 
   safeArea: {
