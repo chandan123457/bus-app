@@ -18,8 +18,13 @@ import { busAPI } from '../services/api';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+const NPR_TO_INR_RATE = 0.625;
+const convertNprToInr = (nprAmount) => Number((Number(nprAmount || 0) * NPR_TO_INR_RATE).toFixed(2));
+
 const SeatSelectionScreen = ({ navigation, route }) => {
   const { busData } = route.params;
+  const priceNpr = Number(busData?.priceNpr ?? busData?.price ?? busData?.tripData?.fare ?? busData?.tripData?.price ?? 0);
+  const priceInr = convertNprToInr(priceNpr);
   
   // States for API data
   const [isLoading, setIsLoading] = useState(true);
@@ -374,7 +379,10 @@ const SeatSelectionScreen = ({ navigation, route }) => {
                   <Text style={styles.starIcon}>⭐</Text>
                   <Text style={styles.ratingText}>{busData.rating}</Text>
                 </View>
-                <Text style={styles.priceText}>₹ {busData.price}</Text>
+                <View style={styles.priceBlock}>
+                  <Text style={styles.priceText}>NPR {priceNpr.toFixed(2)}</Text>
+                  <Text style={styles.priceSubText}>(₹ {priceInr.toFixed(2)})</Text>
+                </View>
                 <Text style={styles.durationText}>{busData.duration}</Text>
               </View>
             </View>
@@ -587,11 +595,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2C2C2C',
   },
+  priceBlock: {
+    alignItems: 'flex-end',
+    marginBottom: 4,
+  },
   priceText: {
     fontSize: 18,
     fontWeight: '700',
     color: '#5B7EFF',
-    marginBottom: 4,
+  },
+  priceSubText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginTop: 2,
   },
   durationText: {
     fontSize: 12,

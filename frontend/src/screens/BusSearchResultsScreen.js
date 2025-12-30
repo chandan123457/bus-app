@@ -24,6 +24,10 @@ import { busAPI } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 
+// Prices are stored in NPR in DB; INR is derived for display.
+const NPR_TO_INR_RATE = 0.625;
+const convertNprToInr = (nprAmount) => Number((Number(nprAmount || 0) * NPR_TO_INR_RATE).toFixed(2));
+
 const BusSearchResultsScreen = ({ navigation, route }) => {
   const [selectedTab, setSelectedTab] = useState('Fastest');
   const [busData, setBusData] = useState([]);
@@ -55,88 +59,65 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
       return [];
     }
 
+    const formatDurationMinutes = (minutes) => {
+      const totalMinutes = Number(minutes);
+      if (!Number.isFinite(totalMinutes) || totalMinutes < 0) return '0h 0m';
+      const hours = Math.floor(totalMinutes / 60);
+      const mins = Math.floor(totalMinutes % 60);
+      return `${hours}h ${mins}m`;
+    };
+
+    const amenitiesToList = (amenitiesObj) => {
+      if (!amenitiesObj || typeof amenitiesObj !== 'object') return [];
+      const list = [];
+      if (amenitiesObj.hasWifi) list.push('WiFi');
+      if (amenitiesObj.hasAC) list.push('AC');
+      if (amenitiesObj.hasCharging) list.push('Charging');
+      if (amenitiesObj.hasRestroom) list.push('Restroom');
+      return list;
+    };
+
     return apiResponse.trips.map((trip, index) => {
       console.log('Processing trip:', trip);
-      
-      const bus = trip?.bus || {};
-      const route = trip?.route || {};
-      const stops = Array.isArray(route?.stops) ? route.stops : [];
-      
-      // Safety check for searchData
-      const startLocation = searchData?.startLocation || from || '';
-      const endLocation = searchData?.endLocation || to || '';
-      
-      // Find departure and arrival times from stops with better error handling
-      const fromStop = stops.length > 0 ? stops.find(stop => 
-        stop?.location && typeof stop.location === 'string' && 
-        stop.location.toLowerCase().includes(startLocation.toLowerCase())
-      ) : null;
-      
-      const toStop = stops.length > 0 ? stops.find(stop => 
-        stop?.location && typeof stop.location === 'string' &&
-        stop.location.toLowerCase().includes(endLocation.toLowerCase())
-      ) : null;
 
-      // Calculate duration with safety checks
-      let duration = '8h 0m'; // Default duration
-      if (fromStop?.departureTime && toStop?.arrivalTime) {
-        try {
-          const depTime = new Date(`1970-01-01T${fromStop.departureTime}`);
-          const arrTime = new Date(`1970-01-01T${toStop.arrivalTime}`);
-          
-          if (!isNaN(depTime.getTime()) && !isNaN(arrTime.getTime())) {
-            let diffMs = arrTime.getTime() - depTime.getTime();
-            
-            // Handle next day arrivals
-            if (diffMs < 0) {
-              diffMs += 24 * 60 * 60 * 1000;
-            }
-            
-            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-            duration = `${diffHours}h ${diffMinutes}m`;
-          }
-        } catch (error) {
-          console.log('Error calculating duration:', error);
-        }
-      }
+      // Backend shape (from /user/showbus) already contains fromStop/toStop, busName/busNumber, fare, duration (minutes).
+      const fromStop = trip?.fromStop || null;
+      const toStop = trip?.toStop || null;
 
-      // Calculate base price from stops with safety checks
-      let basePrice = 500; // Default base price
-      if (fromStop && toStop && stops.length > 0) {
-        try {
-          const fromIndex = stops.findIndex(stop => stop.id === fromStop.id);
-          const toIndex = stops.findIndex(stop => stop.id === toStop.id);
-          
-          if (fromIndex !== -1 && toIndex !== -1 && toIndex > fromIndex) {
-            let calculatedPrice = 0;
-            for (let i = fromIndex; i < toIndex; i++) {
-              calculatedPrice += stops[i]?.price || 0;
-            }
-            if (calculatedPrice > 0) {
-              basePrice = calculatedPrice;
-            }
-          }
-        } catch (error) {
-          console.log('Error calculating price:', error);
-        }
-      }
+      const basePriceNpr = Number(trip?.fare) || 0;
+      const basePriceInr = convertNprToInr(basePriceNpr);
+
+      const busName = trip?.busName || 'Bus Operator';
+      const busNumber = trip?.busNumber || '';
+      const busType = trip?.busType || 'A/C Sleeper (2+1)';
+
+      const departureTime = fromStop?.departureTime || '';
+      const arrivalTime = toStop?.arrivalTime || '';
+
+      const durationText = typeof trip?.duration === 'number' ? formatDurationMinutes(trip.duration) : '0h 0m';
+      const rating = Number(trip?.rating) || 4.0;
+      const amenities = Array.isArray(trip?.amenities)
+        ? trip.amenities
+        : amenitiesToList(trip?.amenities) || ['WiFi', 'AC', 'Charging'];
 
       return {
-        id: trip.tripId || trip.id || `trip_${index}`,
-        operator: bus.name || bus.operator || 'Bus Operator',
-        busType: bus.type || 'A/C Sleeper (2+1)',
-        departureTime: fromStop?.departureTime || '08:00',
-        arrivalTime: toStop?.arrivalTime || '16:00',
-        duration: duration,
-        price: basePrice,
-        rating: Math.floor(parseFloat(bus.rating) || (4.0 + Math.random() * 1)),
-        amenities: bus.amenities || ['WiFi', 'AC', 'Charging'],
-        availableSeats: trip.availableSeats || Math.floor(Math.random() * 30) + 10,
-        busNumber: bus.busNumber || `BUS${String(index + 1).padStart(3, '0')}`,
+        id: trip.tripId || `trip_${index}`,
+        operator: busName,
+        busType: busType,
+        departureTime,
+        arrivalTime,
+        duration: durationText,
+        // Keep `price` for backwards compatibility; it is NPR.
+        price: basePriceNpr,
+        priceNpr: basePriceNpr,
+        priceInr: basePriceInr,
+        rating,
+        amenities,
+        availableSeats: Number(trip?.availableSeats) || 0,
+        busNumber,
         tag: index === 0 ? 'Fastest' : index === 1 ? 'Cheapest' : null,
         tripData: trip, // Store original trip data for booking
-        tripId: trip.tripId || trip.id, // Store tripId directly for easy access
+        tripId: trip.tripId, // Store tripId directly for easy access
       };
     }).filter(trip => trip !== null); // Filter out any null entries
   };
@@ -186,7 +167,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
         });
         break;
       case 'Cheapest':
-        sortedData.sort((a, b) => a.price - b.price);
+        sortedData.sort((a, b) => (a.priceNpr || a.price || 0) - (b.priceNpr || b.price || 0));
         break;
       case 'Departure':
         sortedData.sort((a, b) => a.departureTime.localeCompare(b.departureTime));
@@ -296,7 +277,9 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
         departureTime: bus.departureTime,
         arrivalTime: bus.arrivalTime,
         rating: bus.rating,
-        price: bus.price,
+        price: bus.priceNpr ?? bus.price,
+        priceNpr: bus.priceNpr ?? bus.price,
+        priceInr: bus.priceInr ?? convertNprToInr(bus.priceNpr ?? bus.price),
         duration: bus.duration || '8 Hours',
         // Essential data for API calls
         tripId: tripId,
@@ -329,7 +312,9 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
           </View>
           <View style={styles.operatorDetails}>
             <Text style={styles.operatorName}>{item.operator}</Text>
-            <Text style={styles.busType}>{item.busType}</Text>
+            <Text style={styles.busMeta} numberOfLines={1}>
+              {item.busType}{item.busNumber ? ` • ${item.busNumber}` : ''}
+            </Text>
           </View>
         </View>
 
@@ -387,8 +372,11 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
           <Text style={styles.seats}>{item.availableSeats || item.seatsAvailable || 0}</Text>
         </View>
 
-        {/* Right: Price */}
-        <Text style={styles.price}>₹ {item.price}</Text>
+        {/* Right: Price (NPR stored; INR derived) */}
+        <View style={styles.priceContainer}>
+          <Text style={styles.price}>NPR {Number(item.priceNpr ?? item.price ?? 0).toFixed(2)}</Text>
+          <Text style={styles.priceInr}>(₹ {Number(item.priceInr ?? convertNprToInr(item.priceNpr ?? item.price ?? 0)).toFixed(2)})</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -763,6 +751,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  busMeta: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
+  },
+
   tagContainer: {
     borderRadius: 12,
     paddingHorizontal: 10,
@@ -939,11 +933,22 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
+  priceContainer: {
+    width: '33.333%',
+    alignItems: 'flex-end',
+  },
+
   price: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1A1A1A',
-    width: '33.333%',
+    textAlign: 'right',
+  },
+
+  priceInr: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
     textAlign: 'right',
   },
 

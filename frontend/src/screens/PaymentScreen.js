@@ -47,9 +47,16 @@ const checkPaymentEnvironment = () => {
   }
 };
 
+// Prices are stored in NPR in DB; INR is derived for display.
+const NPR_TO_INR_RATE = 0.625;
+const convertNprToInr = (nprAmount) => Number((Number(nprAmount || 0) * NPR_TO_INR_RATE).toFixed(2));
+
 const PaymentScreen = ({ navigation, route }) => {
   const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
   const [userEmail, setUserEmail] = useState('');
+
+  const getTripIdForRequests = () =>
+    busData?.tripId || busData?.tripData?.tripId || busData?.tripData?.id || null;
 
   const getCachedUserEmail = async () => {
     try {
@@ -276,11 +283,13 @@ const PaymentScreen = ({ navigation, route }) => {
   // Calculate fare - align UI with the selected trip's price
   // NOTE: the actual amount charged is determined by backend `/user/payments/initiate`.
   const seatCount = actualSelectedSeats.length > 0 ? actualSelectedSeats.length : 1; // Default to 1 seat minimum
-  const perSeatFare = Number(busData?.price) || Number(busData?.tripData?.price) || 0;
-  const baseFare = seatCount * perSeatFare;
+  const perSeatFareNpr = Number(busData?.priceNpr ?? busData?.price ?? busData?.tripData?.fare ?? busData?.tripData?.price ?? 0);
+  const perSeatFareInr = convertNprToInr(perSeatFareNpr);
+  const baseFareNpr = seatCount * perSeatFareNpr;
+  const baseFareInr = seatCount * perSeatFareInr;
   const gst = 0;
   const serviceFee = 0;
-  const originalAmount = baseFare;
+  const originalAmount = baseFareNpr;
 
   // Payment method state - Only Razorpay and eSewa
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('RAZORPAY');
@@ -316,7 +325,9 @@ const PaymentScreen = ({ navigation, route }) => {
   ];
 
   // Total amount calculation
-  const totalAmount = isCouponApplied ? finalAmount : originalAmount;
+  const totalAmountNpr = isCouponApplied ? finalAmount : originalAmount;
+  const totalAmountInr = convertNprToInr(totalAmountNpr);
+  const couponDiscountInr = convertNprToInr(couponDiscount);
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -333,9 +344,15 @@ const PaymentScreen = ({ navigation, route }) => {
         return;
       }
 
+      const tripId = getTripIdForRequests();
+      if (!tripId) {
+        Alert.alert('Error', 'Trip ID is missing. Please go back and try again.');
+        return;
+      }
+
       const response = await api.applyCoupon({
         code: couponCode.trim(),
-        tripId: busData.tripId || busData.tripData?.tripId || busData.id,
+        tripId,
         totalAmount: originalAmount,
       }, token);
 
@@ -373,7 +390,7 @@ const PaymentScreen = ({ navigation, route }) => {
 
     console.log('Processing payment...');
     console.log('Payment method:', selectedPaymentMethod);
-    console.log('Amount:', totalAmount);
+    console.log('Amount (NPR):', totalAmountNpr);
     console.log('Applied coupon:', appliedCouponCode);
 
     setPaymentLoading(true);
@@ -387,6 +404,41 @@ const PaymentScreen = ({ navigation, route }) => {
       }
 
       setAuthToken(token);
+
+      // If user typed a coupon but didn't tap "Apply", apply it now before payment.
+      let couponCodeToSend = appliedCouponCode;
+      const typedCoupon = couponCode.trim();
+      if (!couponCodeToSend && typedCoupon) {
+        const tripId = getTripIdForRequests();
+        if (!tripId) {
+          Alert.alert('Error', 'Trip ID is missing. Please go back and try again.');
+          return;
+        }
+
+        setCouponLoading(true);
+        const couponResp = await api.applyCoupon(
+          { code: typedCoupon, tripId, totalAmount: originalAmount },
+          token
+        );
+        setCouponLoading(false);
+
+        if (!couponResp?.success) {
+          Alert.alert('Coupon Error', couponResp?.error || 'Failed to apply coupon');
+          return;
+        }
+
+        const discountAmount = Number(couponResp?.data?.discountAmount) || 0;
+        const finalAmt =
+          Number.isFinite(Number(couponResp?.data?.finalAmount))
+            ? Number(couponResp.data.finalAmount)
+            : Math.max(0, originalAmount - discountAmount);
+
+        setCouponDiscount(discountAmount);
+        setFinalAmount(finalAmt);
+        setIsCouponApplied(true);
+        setAppliedCouponCode(typedCoupon);
+        couponCodeToSend = typedCoupon;
+      }
 
       const fallbackEmail = userEmail || (await getCachedUserEmail()) || '';
       if (!fallbackEmail) {
@@ -420,7 +472,7 @@ const PaymentScreen = ({ navigation, route }) => {
         '12345678-1234-5678-9abc-123456789abf';
 
       const paymentData = {
-        tripId: busData.tripId || busData.tripData?.tripId || busData.id,
+        tripId: getTripIdForRequests(),
         fromStopId: busData.fromStopId || busData.tripData?.fromStop?.id,
         toStopId: busData.toStopId || busData.tripData?.toStop?.id,
         seatIds: actualSeatIds,
@@ -428,7 +480,7 @@ const PaymentScreen = ({ navigation, route }) => {
         paymentMethod: selectedPaymentMethod,
         boardingPointId: actualBoardingPointId,
         droppingPointId: actualDroppingPointId,
-        ...(appliedCouponCode && { couponCode: appliedCouponCode }),
+        ...(couponCodeToSend && { couponCode: couponCodeToSend }),
       };
 
       console.log('Initiating payment with data:', paymentData);
@@ -1128,7 +1180,10 @@ const PaymentScreen = ({ navigation, route }) => {
             <Text style={styles.fareLabel}>
               Base Fare ({seatCount} seats)
             </Text>
-            <Text style={styles.fareAmount}>₹ {baseFare}</Text>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.fareAmount}>NPR {Number(baseFareNpr || 0).toFixed(2)}</Text>
+              <Text style={styles.subtleText}>(₹ {Number(baseFareInr || 0).toFixed(2)})</Text>
+            </View>
           </View>
 
           {/* Coupon Discount */}
@@ -1137,7 +1192,10 @@ const PaymentScreen = ({ navigation, route }) => {
               <Text style={[styles.fareLabel, styles.discountLabel]}>
                 Coupon Discount ({appliedCouponCode})
               </Text>
-              <Text style={[styles.fareAmount, styles.discountAmount]}>- ₹ {couponDiscount}</Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[styles.fareAmount, styles.discountAmount]}>- NPR {Number(couponDiscount || 0).toFixed(2)}</Text>
+                <Text style={[styles.subtleText, styles.discountAmount]}> (₹ {Number(couponDiscountInr || 0).toFixed(2)})</Text>
+              </View>
             </View>
           )}
 
@@ -1147,7 +1205,10 @@ const PaymentScreen = ({ navigation, route }) => {
           {/* Total */}
           <View style={styles.fareRow}>
             <Text style={styles.totalLabel}>Total Amount</Text>
-            <Text style={styles.totalAmount}>₹ {totalAmount}</Text>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.totalAmount}>NPR {Number(totalAmountNpr || 0).toFixed(2)}</Text>
+              <Text style={styles.subtleText}>(₹ {Number(totalAmountInr || 0).toFixed(2)})</Text>
+            </View>
           </View>
         </View>
 
@@ -1252,8 +1313,7 @@ const PaymentScreen = ({ navigation, route }) => {
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <Text style={styles.payButtonText}>
-              Pay {selectedPaymentMethod === 'ESEWA' ? 'रू' : '₹'} {totalAmount}
-              {selectedPaymentMethod === 'ESEWA' ? ' (NPR)' : ' (INR)'}
+              Pay NPR {Number(totalAmountNpr || 0).toFixed(2)} (₹ {Number(totalAmountInr || 0).toFixed(2)})
             </Text>
           )}
         </TouchableOpacity>
