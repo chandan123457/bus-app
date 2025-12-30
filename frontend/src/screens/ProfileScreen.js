@@ -294,14 +294,23 @@ const ProfileScreen = ({ navigation }) => {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <View style={styles.heroSection}>
-        <SafeAreaView edges={['top']} style={styles.heroInner}>
-          <View style={styles.heroBrandRow}>
-            <Image source={require('../../assets/logo.png')} style={styles.brandLogo} />
-            <Text style={styles.brandTagline}>Your Journey Partner</Text>
-          </View>
-          <Text style={styles.heroTitle}>My Profile</Text>
-          <Text style={styles.heroSubtitle}>Manage your account information</Text>
-        </SafeAreaView>
+        <ImageBackground
+          source={require('../../assets/landing-background.jpg')}
+          style={styles.heroBackground}
+          imageStyle={styles.heroBackgroundImage}
+          resizeMode="cover"
+        >
+          <View style={styles.heroOverlay} />
+
+          <SafeAreaView edges={['top']} style={styles.heroInner}>
+            <View style={styles.heroBrandRow}>
+              <Image source={require('../../assets/logo.png')} style={styles.brandLogo} />
+              <Text style={styles.brandTagline}>Your Journey Partner</Text>
+            </View>
+            <Text style={styles.heroTitle}>My Profile</Text>
+            <Text style={styles.heroSubtitle}>Manage your account information</Text>
+          </SafeAreaView>
+        </ImageBackground>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -436,10 +445,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   heroSection: {
-    backgroundColor: '#4F46E5',
-    paddingBottom: 24,
+    paddingBottom: 0,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
+    overflow: 'hidden',
+  },
+  heroBackground: {
+    width: '100%',
+    paddingBottom: 24,
+  },
+  heroBackgroundImage: {
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    opacity: 0.85,
   },
   heroInner: {
     paddingHorizontal: 24,

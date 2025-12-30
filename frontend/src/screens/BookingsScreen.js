@@ -24,7 +24,7 @@ import API_BASE_URL, { API_ENDPOINTS } from '../config/api';
 import { userAPI } from '../services/api';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const tabs = ['Active', 'Completed', 'Cancelled'];
+  const tabs = ['Active', 'Completed'];
 
 const STATUS_META = {
   CONFIRMED: { label: 'Confirmed', bg: '#DCFCE7', color: '#166534' },
@@ -187,12 +187,11 @@ const BookingsScreen = ({ navigation }) => {
     const grouped = {
       Active: [],
       Completed: [],
-      Cancelled: [],
     };
 
     bookings.forEach((booking) => {
       if (booking.status === 'CANCELLED' || booking.status === 'REFUNDED') {
-        grouped.Cancelled.push(booking);
+        grouped.Completed.push(booking);
       } else if (booking.trip?.tripStatus === 'COMPLETED') {
         grouped.Completed.push(booking);
       } else {
@@ -334,11 +333,9 @@ const BookingsScreen = ({ navigation }) => {
       <MaterialCommunityIcons name="calendar-blank" size={28} color="#9CA3AF" />
       <Text style={styles.emptyStateTitle}>No {selectedTab.toLowerCase()} bookings</Text>
       <Text style={styles.emptyStateSubtext}>When you reserve seats, they will show up here automatically.</Text>
-      {selectedTab !== 'Cancelled' && (
-        <TouchableOpacity style={styles.ctaButton} onPress={() => navigation.navigate('Home')} activeOpacity={0.8}>
-          <Text style={styles.ctaButtonText}>Search Buses</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity style={styles.ctaButton} onPress={() => navigation.navigate('Home')} activeOpacity={0.8}>
+        <Text style={styles.ctaButtonText}>Search Buses</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -481,7 +478,7 @@ const BookingsScreen = ({ navigation }) => {
           style={styles.backgroundImage}
           resizeMode="cover"
         >
-          <View style={styles.overlay} />
+          <View style={[styles.overlay, { opacity: 0.85 }]} />
 
           <SafeAreaView edges={['top']} style={styles.safeHeader}>
             <View style={styles.header}>
