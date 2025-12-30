@@ -194,21 +194,35 @@ const BookingsScreen = ({ navigation }) => {
       // GET /user/booking/download-ticket/:groupId (Authorization: Bearer <token>)
       const downloadUrl = `${API_BASE_URL}${API_ENDPOINTS.DOWNLOAD_TICKET}/${booking.bookingGroupId}`;
 
-      const tempDirectory = FileSystem.cacheDirectory || FileSystem.documentDirectory;
       const baseFilename = `ticket_${booking.bookingGroupId}.pdf`;
       
-      // Use a temporary file path - even if directories are null, the download will work
-      const tempFileUri = tempDirectory 
-        ? `${tempDirectory}${baseFilename}`
-        : FileSystem.cacheDirectory + baseFilename; // This will create a valid path
-
-      const downloadResult = await FileSystem.downloadAsync(downloadUrl, tempFileUri, {
+      // Use fetch API instead of deprecated downloadAsync
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
         headers: {
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/pdf',
         },
       });
 
-      if (downloadResult.status === 200) {
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+
+      // Get the PDF data as base64
+      const pdfBlob = await response.blob();
+      const reader = new FileReader();
+      
+      const base64Data = await new Promise((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64 = reader.result.split(',')[1]; // Remove data:application/pdf;base64, prefix
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(pdfBlob);
+      });
+
+      // For production builds, save to user-accessible location
         // Android: save into a user-selected folder (device storage) using Storage Access Framework
         if (Platform.OS === 'android' && FileSystem.StorageAccessFramework?.requestDirectoryPermissionsAsync) {
           const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
@@ -220,11 +234,7 @@ const BookingsScreen = ({ navigation }) => {
               'application/pdf'
             );
 
-            const base64 = await FileSystem.readAsStringAsync(downloadResult.uri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-
-            await FileSystem.writeAsStringAsync(destinationUri, base64, {
+            await FileSystem.writeAsStringAsync(destinationUri, base64Data, {
               encoding: FileSystem.EncodingType.Base64,
             });
 
@@ -233,39 +243,45 @@ const BookingsScreen = ({ navigation }) => {
           }
         }
 
-        // Try sharing the file if available (works in Expo Go and when local storage is limited)
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(downloadResult.uri, {
+        // iOS: Save to Documents directory and share
+        if (Platform.OS === 'ios') {
+          const documentsDir = FileSystem.documentDirectory;
+          if (documentsDir) {
+            const fileUri = `${documentsDir}${baseFilename}`;
+            await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            
+            // Use iOS sharing to let user save to Files app or other apps
+            if (await Sharing.isAvailableAsync()) {
+              await Sharing.shareAsync(fileUri, {
+                mimeType: 'application/pdf',
+                dialogTitle: 'Save Ticket',
+                UTI: 'com.adobe.pdf',
+              });
+              Alert.alert('Success', 'Ticket shared successfully. You can save it from the share menu.');
+              return;
+            }
+          }
+        }
+
+        // Fallback: Share the file directly (works across platforms)
+        const tempDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+        if (tempDir && (await Sharing.isAvailableAsync())) {
+          const tempFileUri = `${tempDir}${baseFilename}`;
+          await FileSystem.writeAsStringAsync(tempFileUri, base64Data, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          
+          await Sharing.shareAsync(tempFileUri, {
             mimeType: 'application/pdf',
             dialogTitle: 'Save Ticket',
             UTI: 'com.adobe.pdf',
           });
           Alert.alert('Success', 'Ticket shared successfully. You can save it from the share menu.');
-          return;
-        }
-
-        // Fallback: app-local folder (still local storage, inside the app)
-        if (tempDirectory) {
-          const ticketsDir = `${FileSystem.documentDirectory || tempDirectory}tickets/`;
-          const dirInfo = await FileSystem.getInfoAsync(ticketsDir);
-          if (!dirInfo.exists) {
-            await FileSystem.makeDirectoryAsync(ticketsDir, { intermediates: true });
-          }
-
-          let savedUri = `${ticketsDir}${baseFilename}`;
-          const existing = await FileSystem.getInfoAsync(savedUri);
-          if (existing.exists) {
-            savedUri = `${ticketsDir}ticket_${booking.bookingGroupId}_${Date.now()}.pdf`;
-          }
-
-          await FileSystem.copyAsync({ from: downloadResult.uri, to: savedUri });
-          Alert.alert('Download Complete', 'Ticket saved to local storage.');
         } else {
-          throw new Error('Unable to save ticket to local storage. Please try using a production build of the app.');
+          throw new Error('Unable to save ticket. Please ensure your device has sufficient storage and permissions.');
         }
-      } else {
-        throw new Error('Download failed');
-      }
     } catch (err) {
       console.error('Download ticket error:', err);
       Alert.alert('Download Failed', err.message || 'Could not download ticket. Please try again.');
