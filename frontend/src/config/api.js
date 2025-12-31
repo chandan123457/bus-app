@@ -17,7 +17,7 @@
 // Use the same IP that Metro/Expo shows (your computer's IP on WiFi)
 // Currently using: 192.168.22.4 (from Metro: exp://192.168.22.4:8081)
 // If your IP changes, update only this line.
-const API_BASE_URL = 'https://gantabya-44tr.onrender.com';  // Development: local IP for testing
+const API_BASE_URL = 'http://192.168.22.4:3000';  // Development: local IP for testing
 
 // Log API URL in development for debugging
 if (__DEV__) {
@@ -40,9 +40,9 @@ export const API_ENDPOINTS = {
   SHOW_BUS: '/user/showbus',
   BUS_INFO: '/user/showbusinfo',
   MY_BOOKINGS: '/user/mybookings',
-  BOOKING_DETAILS: '/user/bookingdetails', // :groupId
+  BOOKING_DETAILS: (groupId) => `/user/bookingdetails/${groupId}`,
   CANCEL_TICKET: '/user/cancelticket',
-  DOWNLOAD_TICKET: '/user/booking/download-ticket', // :groupId
+  DOWNLOAD_TICKET: (groupId) => `/user/booking/download-ticket/${groupId}`,
   
   // Payment endpoints
   PAYMENT_INITIATE: '/user/payments/initiate',

@@ -18,6 +18,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import API_BASE_URL, { API_ENDPOINTS } from '../config/api';
 import { userAPI } from '../services/api';
@@ -190,101 +191,144 @@ const BookingsScreen = ({ navigation }) => {
       }
 
       setDownloadingId(booking.bookingGroupId);
-      // Backend returns a PDF buffer with Content-Type: application/pdf
-      // GET /user/booking/download-ticket/:groupId (Authorization: Bearer <token>)
-      const downloadUrl = `${API_BASE_URL}${API_ENDPOINTS.DOWNLOAD_TICKET}/${booking.bookingGroupId}`;
+      const downloadUrl = `${API_BASE_URL}${API_ENDPOINTS.DOWNLOAD_TICKET(booking.bookingGroupId)}`;
+      const filename = `ticket_${booking.bookingGroupId}_${Date.now()}.pdf`;
 
-      const baseFilename = `ticket_${booking.bookingGroupId}.pdf`;
-      
-      // Use fetch API instead of deprecated downloadAsync
+      console.log('Starting ticket download:', downloadUrl);
+
+      // Web platform: use browser download
+      const isBrowserRuntime = typeof window !== 'undefined' && typeof document !== 'undefined';
+      if (Platform.OS === 'web' || isBrowserRuntime) {
+        const response = await fetch(downloadUrl, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Download failed with HTTP ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(objectUrl);
+
+        Alert.alert('Success', 'Ticket downloaded successfully!');
+        return;
+      }
+
+      // Android/iOS: Try FileSystem approach first, fallback to fetch + share
+      const localDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+
+      if (localDir && FileSystem.downloadAsync) {
+        // FileSystem is available - use the standard flow
+        try {
+          const permission = await MediaLibrary.requestPermissionsAsync();
+          if (!permission.granted) {
+            Alert.alert('Permission Required', 'Please allow storage access to download tickets.');
+            return;
+          }
+
+          const fileUri = `${localDir}${filename}`;
+          console.log('Downloading to:', fileUri);
+
+          const downloadResult = await FileSystem.downloadAsync(downloadUrl, fileUri, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (!downloadResult?.uri) {
+            throw new Error('Download failed - no file received');
+          }
+
+          if (downloadResult.status >= 400) {
+            throw new Error(`Download failed with HTTP ${downloadResult.status}`);
+          }
+
+          const savedAsset = await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
+          console.log('✅ Ticket saved to library:', savedAsset.uri || downloadResult.uri);
+
+          Alert.alert(
+            'Ticket Downloaded Successfully! ✅',
+            `Your ticket has been saved to:\n📁 Gallery/Downloads folder\n\nFile: ${filename}`,
+            [{ text: 'OK' }]
+          );
+          return;
+        } catch (fsError) {
+          console.warn('FileSystem download failed, trying fallback:', fsError);
+          // Fall through to fetch fallback
+        }
+      }
+
+      // Fallback: fetch + share (works even when FileSystem directories are undefined)
+      console.log('Using fetch+share fallback method');
       const response = await fetch(downloadUrl, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/pdf',
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) {
-        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+        throw new Error(`Download failed with HTTP ${response.status}`);
       }
 
-      // Get the PDF data as base64
-      const pdfBlob = await response.blob();
+      const blob = await response.blob();
       const reader = new FileReader();
-      
+
       const base64Data = await new Promise((resolve, reject) => {
         reader.onloadend = () => {
-          const base64 = reader.result.split(',')[1]; // Remove data:application/pdf;base64, prefix
+          const base64 = reader.result.split(',')[1];
           resolve(base64);
         };
         reader.onerror = reject;
-        reader.readAsDataURL(pdfBlob);
+        reader.readAsDataURL(blob);
       });
 
-      // For production builds, save to user-accessible location
-        // Android: save into a user-selected folder (device storage) using Storage Access Framework
-        if (Platform.OS === 'android' && FileSystem.StorageAccessFramework?.requestDirectoryPermissionsAsync) {
-          const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-          if (permissions.granted) {
-            const filename = `ticket_${booking.bookingGroupId}_${Date.now()}.pdf`;
-            const destinationUri = await FileSystem.StorageAccessFramework.createFileAsync(
-              permissions.directoryUri,
-              filename,
-              'application/pdf'
-            );
+      // Try to save using FileSystem.writeAsStringAsync if available
+      let fileUri = null;
+      if (FileSystem.cacheDirectory && FileSystem.writeAsStringAsync) {
+        fileUri = `${FileSystem.cacheDirectory}${filename}`;
+        await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        console.log('Saved to cache:', fileUri);
+      }
 
-            await FileSystem.writeAsStringAsync(destinationUri, base64Data, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
+      // Share the file
+      if (fileUri && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Save Ticket',
+          UTI: 'com.adobe.pdf',
+        });
+        Alert.alert(
+          'Ticket Downloaded! 📥',
+          `Please save the ticket from the share menu.\n\n📄 File: ${filename}\n💡 Tip: Tap "Save to Files" or "Save to Drive"`,
+          [{ text: 'Got it' }]
+        );
+      } else if (fileUri) {
+        Alert.alert(
+          'Ticket Saved! ✅',
+          `Your ticket is saved at:\n📁 ${fileUri}\n\n📄 ${filename}`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Ticket Downloaded! 📥',
+          `File: ${filename}\n\nPlease check your Downloads or recent files.`,
+          [{ text: 'OK' }]
+        );
+      }
 
-            Alert.alert('Download Complete', 'Ticket saved to your selected folder.');
-            return;
-          }
-        }
-
-        // iOS: Save to Documents directory and share
-        if (Platform.OS === 'ios') {
-          const documentsDir = FileSystem.documentDirectory;
-          if (documentsDir) {
-            const fileUri = `${documentsDir}${baseFilename}`;
-            await FileSystem.writeAsStringAsync(fileUri, base64Data, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            
-            // Use iOS sharing to let user save to Files app or other apps
-            if (await Sharing.isAvailableAsync()) {
-              await Sharing.shareAsync(fileUri, {
-                mimeType: 'application/pdf',
-                dialogTitle: 'Save Ticket',
-                UTI: 'com.adobe.pdf',
-              });
-              Alert.alert('Success', 'Ticket shared successfully. You can save it from the share menu.');
-              return;
-            }
-          }
-        }
-
-        // Fallback: Share the file directly (works across platforms)
-        const tempDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
-        if (tempDir && (await Sharing.isAvailableAsync())) {
-          const tempFileUri = `${tempDir}${baseFilename}`;
-          await FileSystem.writeAsStringAsync(tempFileUri, base64Data, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          
-          await Sharing.shareAsync(tempFileUri, {
-            mimeType: 'application/pdf',
-            dialogTitle: 'Save Ticket',
-            UTI: 'com.adobe.pdf',
-          });
-          Alert.alert('Success', 'Ticket shared successfully. You can save it from the share menu.');
-        } else {
-          throw new Error('Unable to save ticket. Please ensure your device has sufficient storage and permissions.');
-        }
     } catch (err) {
       console.error('Download ticket error:', err);
-      Alert.alert('Download Failed', err.message || 'Could not download ticket. Please try again.');
+      Alert.alert(
+        'Download Failed',
+        err.message || 'Could not download ticket. Please try again.'
+      );
     } finally {
       setDownloadingId(null);
     }
@@ -332,10 +376,15 @@ const BookingsScreen = ({ navigation }) => {
     const seats = getSeatDisplay(booking);
     const journeyDate = formatJourneyDate(booking.trip?.tripDate || booking.tripDate);
     const bookingDate = formatBookingDate(booking.bookedAt);
-    const pickupTime = formatTime(booking.route?.from?.departureTime || booking.boardingPoint?.time);
-    const dropTime = formatTime(booking.route?.to?.arrivalTime || booking.droppingPoint?.time);
+    const pickupTime = formatTime(booking.boardingPoint?.time || booking.route?.from?.departureTime);
+    const dropTime = formatTime(booking.droppingPoint?.time || booking.route?.to?.arrivalTime);
     const totalAmount = formatCurrency(booking.finalPrice ?? booking.totalPrice, booking.payment?.currency);
     const bookingRef = `pb-${(booking.bookingGroupId || '').slice(-8) || '08-8580'} • ${booking.bus?.type || 'MIXED'}`;
+
+    const pickupName = booking.boardingPoint?.name || booking.route?.from?.name || '--';
+    const pickupDetail = booking.boardingPoint?.landmark || booking.route?.from?.city || '';
+    const dropName = booking.droppingPoint?.name || booking.route?.to?.name || '--';
+    const dropDetail = booking.droppingPoint?.landmark || booking.route?.to?.city || '';
 
     return (
       <View style={styles.bookingCard}>
@@ -360,8 +409,8 @@ const BookingsScreen = ({ navigation }) => {
               <View style={styles.locationDetails}>
                 <Text style={styles.locationLabel}>Pickup From</Text>
                 <Text style={styles.locationName}>
-                  {booking.route?.from?.name || booking.boardingPoint?.name || 'siwan'} 
-                  {booking.route?.from?.city ? ` (${booking.route?.from?.city})` : ' (malmaliiya)'}
+                  {pickupName}
+                  {pickupDetail ? ` (${pickupDetail})` : ''}
                 </Text>
                 <Text style={styles.locationTime}>{pickupTime}</Text>
               </View>
@@ -374,8 +423,8 @@ const BookingsScreen = ({ navigation }) => {
               <View style={styles.locationDetails}>
                 <Text style={styles.locationLabel}>Drop At</Text>
                 <Text style={styles.locationName}>
-                  {booking.route?.to?.name || booking.droppingPoint?.name || 'jodhpur'} 
-                  {booking.route?.to?.city ? ` (${booking.route?.to?.city})` : ' (banar road)'}
+                  {dropName}
+                  {dropDetail ? ` (${dropDetail})` : ''}
                 </Text>
                 <Text style={styles.locationTime}>{dropTime}</Text>
               </View>
