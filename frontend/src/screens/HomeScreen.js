@@ -262,7 +262,7 @@ const HomeScreen = ({ navigation }) => {
           {/* Main Booking Card */}
           <View style={styles.bookingCard}>
               <Text style={styles.bookingTitle}>Book Your Journey</Text>
-              <Text style={styles.bookingSubtitle}>Find and book bus tickets across India.</Text>
+              <Text style={styles.bookingSubtitle}>Find and book bus tickets across World.</Text>
 
             {/* Input Fields Container with Swap Button */}
             <View style={{ position: 'relative' }}>

@@ -681,6 +681,35 @@ api.applyCoupon = async (couponData, token) => {
   }
 };
 
+api.getOffers = async (token) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await api.get(API_ENDPOINTS.OFFERS, { headers });
+
+    return {
+      success: true,
+      data: response.data,
+      message: response.data?.message || 'Offers fetched successfully',
+    };
+  } catch (error) {
+    console.error('Offers fetch error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+
+    return {
+      success: false,
+      error: error.response?.data?.errorMessage || error.message || 'Failed to load offers',
+      status: error.response?.status,
+    };
+  }
+};
+
 api.initiatePayment = async (paymentData, token) => {
   try {
     console.log('Initiating payment:', { 

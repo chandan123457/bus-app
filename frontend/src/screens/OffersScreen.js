@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,70 +8,73 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../services/api';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const OffersScreen = ({ navigation }) => {
-  const offers = [
-    {
-      id: 1,
-      code: 'FIRST25',
-      description: 'Get 25% off on your first booking',
-      validity: 'Valid until Dec 31, 2025',
-      conditions: ['Min Booking ₹500', 'Max discount ₹200'],
-      badge: 'New',
-      badgeType: 'new',
-    },
-    {
-      id: 2,
-      code: 'WEEKEND50',
-      description: 'Flat ₹50 off on weekend bookings',
-      validity: 'Valid on Fri–Sun bookings',
-      conditions: ['Min Booking ₹300'],
-      icon: 'tag',
-      badgeType: 'icon',
-    },
-    {
-      id: 3,
-      code: 'STUDENT10',
-      description: '10% off for students with ID',
-      validity: 'Valid student ID required',
-      conditions: ['Max discount ₹150'],
-      icon: 'school',
-      badgeType: 'icon',
-    },
-  ];
+  const [offers, setOffers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchOffers = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const token = await AsyncStorage.getItem('authToken');
+        const response = await api.getOffers(token);
+
+        if (response.success) {
+          const list = Array.isArray(response.data) ? response.data : response.data?.offers;
+          setOffers(Array.isArray(list) ? list : []);
+        } else {
+          setError(response.error || 'Failed to load offers');
+        }
+      } catch (err) {
+        console.error('Offers load error:', err);
+        setError(err.message || 'Failed to load offers');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOffers();
+  }, []);
 
   const renderOfferCard = (offer) => (
-    <View key={offer.id} style={styles.offerCard}>
+    <View key={offer.id || offer.code} style={styles.offerCard}>
       {/* Top Row - Code and Badge/Icon */}
       <View style={styles.topRow}>
-        <Text style={styles.offerCode}>{offer.code}</Text>
-        {offer.badgeType === 'new' ? (
+        <Text style={styles.offerCode}>{offer.code || 'OFFER'}</Text>
+        {offer.badgeType === 'new' && offer.badge ? (
           <View style={styles.newBadge}>
             <Text style={styles.newBadgeText}>{offer.badge}</Text>
           </View>
-        ) : (
+        ) : offer.icon ? (
           <MaterialCommunityIcons name={offer.icon} size={20} color="#3B82F6" />
-        )}
+        ) : null}
       </View>
 
       {/* Description */}
-      <Text style={styles.description}>{offer.description}</Text>
+      <Text style={styles.description}>{offer.description || 'Special offer available'}</Text>
 
       {/* Validity */}
-      <Text style={styles.validity}>{offer.validity}</Text>
+      {offer.validity && <Text style={styles.validity}>{offer.validity}</Text>}
 
       {/* Conditions */}
-      {offer.conditions.map((condition, index) => (
-        <Text key={index} style={styles.condition}>
-          {condition}
-        </Text>
-      ))}
+      {Array.isArray(offer.conditions) && offer.conditions.length > 0 &&
+        offer.conditions.map((condition, index) => (
+          <Text key={index} style={styles.condition}>
+            {condition}
+          </Text>
+        ))}
 
       {/* Action Button */}
       <TouchableOpacity style={styles.useCodeButton} activeOpacity={0.8}>
@@ -109,7 +112,47 @@ const OffersScreen = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {offers.map((offer) => renderOfferCard(offer))}
+          {loading ? (
+            <View style={styles.stateContainer}>
+              <ActivityIndicator size="large" color="#2C5F6F" />
+              <Text style={styles.stateText}>Loading offers...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.stateContainer}>
+              <Text style={styles.stateText}>{error}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={async () => {
+                  setLoading(true);
+                  setError('');
+                  try {
+                    const token = await AsyncStorage.getItem('authToken');
+                    const response = await api.getOffers(token);
+                    if (response.success) {
+                      const list = Array.isArray(response.data)
+                        ? response.data
+                        : response.data?.offers;
+                      setOffers(Array.isArray(list) ? list : []);
+                    } else {
+                      setError(response.error || 'Failed to load offers');
+                    }
+                  } catch (err) {
+                    setError(err.message || 'Failed to load offers');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : offers.length === 0 ? (
+            <View style={styles.stateContainer}>
+              <Text style={styles.stateText}>No offers available right now.</Text>
+            </View>
+          ) : (
+            offers.map((offer) => renderOfferCard(offer))
+          )}
         </ScrollView>
       </View>
     </View>
@@ -180,6 +223,28 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 10, // Cards overlap the background image
     paddingBottom: 100, // Space for bottom navigation
+  },
+
+  stateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+  },
+  stateText: {
+    marginTop: 8,
+    color: '#4B5563',
+    fontSize: 14,
+  },
+  retryButton: {
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#2C5F6F',
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 
   // Offer Card - Compact with reduced padding
