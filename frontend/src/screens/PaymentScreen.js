@@ -20,8 +20,13 @@ import Constants from 'expo-constants';
 import api from '../services/api';
 import CryptoJS from 'crypto-js';
 
-// Import RazorpayCheckout properly
-import RazorpayCheckout from 'react-native-razorpay';
+// Import RazorpayCheckout safely - wrap in try-catch to prevent iOS crash
+let RazorpayCheckout = null;
+try {
+  RazorpayCheckout = require('react-native-razorpay').default;
+} catch (e) {
+  console.log('Razorpay module not available:', e.message);
+}
 
 // Prices are stored in NPR in DB; INR is derived for display.
 const NPR_TO_INR_RATE = 0.625;
