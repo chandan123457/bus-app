@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "BusBooking.app"
-               BlueprintName = "BusBooking"
-               ReferencedContainer = "container:BusBooking.xcodeproj">
+               BuildableName = "GoGantabya.app"
+               BlueprintName = "GoGantabya"
+               ReferencedContainer = "container:GoGantabya.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "BusBookingTests.xctest"
-               BlueprintName = "BusBookingTests"
-               ReferencedContainer = "container:BusBooking.xcodeproj">
+               BuildableName = "GoGantabyaTests.xctest"
+               BlueprintName = "GoGantabyaTests"
+               ReferencedContainer = "container:GoGantabya.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "BusBooking.app"
-            BlueprintName = "BusBooking"
-            ReferencedContainer = "container:BusBooking.xcodeproj">
+            BuildableName = "GoGantabya.app"
+            BlueprintName = "GoGantabya"
+            ReferencedContainer = "container:GoGantabya.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "BusBooking.app"
-            BlueprintName = "BusBooking"
-            ReferencedContainer = "container:BusBooking.xcodeproj">
+            BuildableName = "GoGantabya.app"
+            BlueprintName = "GoGantabya"
+            ReferencedContainer = "container:GoGantabya.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import API_BASE_URL, { API_ENDPOINTS } from '../config/api';
@@ -222,103 +222,73 @@ const BookingsScreen = ({ navigation }) => {
         return;
       }
 
-      // Android/iOS: Try FileSystem approach first, fallback to fetch + share
-      const localDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+      // Native: download to cache, then save via Storage Access Framework or Share Sheet
+      const tempUri = `${FileSystem.cacheDirectory}${filename}`;
+      console.log('Downloading to temp:', tempUri);
 
-      if (localDir && FileSystem.downloadAsync) {
-        // FileSystem is available - use the standard flow
-        try {
-          const permission = await MediaLibrary.requestPermissionsAsync();
-          if (!permission.granted) {
-            Alert.alert('Permission Required', 'Please allow storage access to download tickets.');
-            return;
-          }
-
-          const fileUri = `${localDir}${filename}`;
-          console.log('Downloading to:', fileUri);
-
-          const downloadResult = await FileSystem.downloadAsync(downloadUrl, fileUri, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-
-          if (!downloadResult?.uri) {
-            throw new Error('Download failed - no file received');
-          }
-
-          if (downloadResult.status >= 400) {
-            throw new Error(`Download failed with HTTP ${downloadResult.status}`);
-          }
-
-          const savedAsset = await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
-          console.log('✅ Ticket saved to library:', savedAsset.uri || downloadResult.uri);
-
-          Alert.alert(
-            'Ticket Downloaded Successfully! ✅',
-            `Your ticket has been saved to:\n📁 Gallery/Downloads folder\n\nFile: ${filename}`,
-            [{ text: 'OK' }]
-          );
-          return;
-        } catch (fsError) {
-          console.warn('FileSystem download failed, trying fallback:', fsError);
-          // Fall through to fetch fallback
-        }
-      }
-
-      // Fallback: fetch + share (works even when FileSystem directories are undefined)
-      console.log('Using fetch+share fallback method');
-      const response = await fetch(downloadUrl, {
-        method: 'GET',
+      const downloadResult = await FileSystem.downloadAsync(downloadUrl, tempUri, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) {
-        throw new Error(`Download failed with HTTP ${response.status}`);
+      if (!downloadResult?.uri || downloadResult.status >= 400) {
+        throw new Error(`Download failed with HTTP ${downloadResult?.status || 'unknown'}`);
       }
 
-      const blob = await response.blob();
-      const reader = new FileReader();
+      // Android: prompt user to pick a folder using SAF (saves to real Downloads)
+      if (Platform.OS === 'android' && FileSystem.StorageAccessFramework) {
+        try {
+          const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+          if (permissions.granted) {
+            const base64 = await FileSystem.readAsStringAsync(downloadResult.uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
 
-      const base64Data = await new Promise((resolve, reject) => {
-        reader.onloadend = () => {
-          const base64 = reader.result.split(',')[1];
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+            const newFileUri = await FileSystem.StorageAccessFramework.createFileAsync(
+              permissions.directoryUri,
+              filename,
+              'application/pdf'
+            );
 
-      // Try to save using FileSystem.writeAsStringAsync if available
-      let fileUri = null;
-      if (FileSystem.cacheDirectory && FileSystem.writeAsStringAsync) {
-        fileUri = `${FileSystem.cacheDirectory}${filename}`;
-        await FileSystem.writeAsStringAsync(fileUri, base64Data, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        console.log('Saved to cache:', fileUri);
+            await FileSystem.writeAsStringAsync(newFileUri, base64, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+
+            Alert.alert(
+              'Ticket Saved ✅',
+              'Saved to the folder you selected. Open File Manager and check that folder to view the PDF.',
+              [
+                {
+                  text: 'Open / Share',
+                  onPress: async () => {
+                    if (await Sharing.isAvailableAsync()) {
+                      await Sharing.shareAsync(newFileUri, {
+                        mimeType: 'application/pdf',
+                        dialogTitle: 'Open Ticket',
+                      });
+                    }
+                  },
+                },
+                { text: 'Done' },
+              ]
+            );
+            return;
+          }
+        } catch (safError) {
+          console.warn('SAF failed, falling back to Share Sheet:', safError);
+        }
       }
 
-      // Share the file
-      if (fileUri && await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
+      // Fallback (iOS or if SAF was denied/cancelled): Share Sheet
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(downloadResult.uri, {
           mimeType: 'application/pdf',
-          dialogTitle: 'Save Ticket',
+          dialogTitle: 'Save or Share Ticket',
           UTI: 'com.adobe.pdf',
         });
-        Alert.alert(
-          'Ticket Downloaded! 📥',
-          `Please save the ticket from the share menu.\n\n📄 File: ${filename}\n💡 Tip: Tap "Save to Files" or "Save to Drive"`,
-          [{ text: 'Got it' }]
-        );
-      } else if (fileUri) {
-        Alert.alert(
-          'Ticket Saved! ✅',
-          `Your ticket is saved at:\n📁 ${fileUri}\n\n📄 ${filename}`,
-          [{ text: 'OK' }]
-        );
       } else {
         Alert.alert(
-          'Ticket Downloaded! 📥',
-          `File: ${filename}\n\nPlease check your Downloads or recent files.`,
+          'Download Complete',
+          'Ticket downloaded to app cache, but no app is available to open/share it. Please install a PDF viewer.',
           [{ text: 'OK' }]
         );
       }

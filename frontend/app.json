@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Bus Booking",
+    "name": "Go Gantabya",
     "slug": "bus-booking-app",
-    "owner": "yuvi899",
+    "owner": "bottle1234",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
@@ -39,11 +39,20 @@
             "minSdkVersion": 24
           }
         }
-      ]
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to save tickets.",
+          "savePhotosPermission": "Allow $(PRODUCT_NAME) to save tickets to your device.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      "expo-file-system"
     ],
     "extra": {
       "eas": {
-        "projectId": "b10c249a-0b5f-46d7-bdeb-bc6a90dd91d2"
+        "projectId": "b320c74c-698d-4193-ac2c-46c0ed7db673"
       }
     }
   }
