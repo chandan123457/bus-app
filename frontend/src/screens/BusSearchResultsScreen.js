@@ -16,20 +16,43 @@ import {
   FlatList,
   Alert,
   ActivityIndicator,
-  TextInput,
   Modal,
-  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { busAPI } from '../services/api';
+import { COLORS } from '../constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
 // Prices are stored in NPR in DB; INR is derived for display.
 const NPR_TO_INR_RATE = 0.625;
 const convertNprToInr = (nprAmount) => Number((Number(nprAmount || 0) * NPR_TO_INR_RATE).toFixed(2));
+
+const getAmenityMeta = (label) => {
+  switch (label) {
+    case 'WiFi':
+      return { lib: 'ion', name: 'wifi', color: COLORS.primary, text: 'WiFi' };
+    case 'AC':
+      return { lib: 'ion', name: 'snow', color: COLORS.primary, text: 'AC' };
+    case 'Charging':
+      return { lib: 'ion', name: 'flash', color: COLORS.warning, text: 'Charging' };
+    case 'Restroom':
+      return { lib: 'mci', name: 'toilet', color: COLORS.primary, text: 'Restroom' };
+    case 'Blanket':
+      return { lib: 'mci', name: 'blanket', color: COLORS.primary, text: 'Blanket' };
+    case 'Water Bottle':
+      return { lib: 'mci', name: 'water', color: COLORS.primary, text: 'Water' };
+    case 'Snacks':
+      return { lib: 'mci', name: 'food', color: COLORS.primary, text: 'Snacks' };
+    case 'TV':
+      return { lib: 'mci', name: 'television', color: COLORS.primary, text: 'TV' };
+    default:
+      return { lib: 'ion', name: 'information-circle', color: COLORS.primary, text: label };
+  }
+};
 
 const BusSearchResultsScreen = ({ navigation, route }) => {
   const [selectedTab, setSelectedTab] = useState('Fastest');
@@ -71,7 +94,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
       return;
     }
 
-    // Keep UI state in sync before hitting API so chips/switches reflect choice
+    // Keep UI state in sync before hitting API so controls reflect choice
     setFilters(nextFilters);
 
     setLoading(true);
@@ -135,6 +158,10 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
       if (amenitiesObj.hasAC) list.push('AC');
       if (amenitiesObj.hasCharging) list.push('Charging');
       if (amenitiesObj.hasRestroom) list.push('Restroom');
+      if (amenitiesObj.hasBlanket) list.push('Blanket');
+      if (amenitiesObj.hasWaterBottle) list.push('Water Bottle');
+      if (amenitiesObj.hasSnacks) list.push('Snacks');
+      if (amenitiesObj.hasTV) list.push('TV');
       return list;
     };
 
@@ -159,7 +186,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
       const rating = Number(trip?.rating) || 4.0;
       const amenities = Array.isArray(trip?.amenities)
         ? trip.amenities
-        : amenitiesToList(trip?.amenities) || ['WiFi', 'AC', 'Charging'];
+        : amenitiesToList(trip?.amenities);
 
       return {
         id: trip.tripId || `trip_${index}`,
@@ -443,6 +470,34 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
           <Text style={styles.priceInr}>(₹ {Number(item.priceInr ?? convertNprToInr(item.priceNpr ?? item.price ?? 0)).toFixed(2)})</Text>
         </View>
       </View>
+
+      {Array.isArray(item.amenities) && item.amenities.length > 0 ? (
+        <View style={styles.amenitiesRow}>
+          {item.amenities.map((label) => {
+            const meta = getAmenityMeta(label);
+            return (
+              <View key={label} style={styles.amenityPill}>
+                {meta.lib === 'mci' ? (
+                  <MaterialCommunityIcons
+                    name={meta.name}
+                    size={14}
+                    color={meta.color}
+                    style={styles.amenityIcon}
+                  />
+                ) : (
+                  <Ionicons
+                    name={meta.name}
+                    size={14}
+                    color={meta.color}
+                    style={styles.amenityIcon}
+                  />
+                )}
+                <Text style={styles.amenityText}>{meta.text}</Text>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
     </TouchableOpacity>
   );
 
@@ -574,98 +629,18 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
                     ))}
                   </View>
 
-                  <Text style={styles.sectionLabel}>Amenities</Text>
-                  {[
-                    { key: 'hasWifi', label: 'WiFi' },
-                    { key: 'hasAC', label: 'AC' },
-                    { key: 'hasCharging', label: 'Charging' },
-                    { key: 'hasRestroom', label: 'Restroom' },
-                  ].map((item) => (
-                    <View key={item.key} style={styles.switchRow}>
-                      <Text style={styles.switchLabel}>{item.label}</Text>
-                      <Switch
-                        value={filters[item.key]}
-                        onValueChange={(val) => updateFilter(item.key, val)}
-                        thumbColor={filters[item.key] ? '#2D9B9B' : '#E5E7EB'}
-                        trackColor={{ true: '#A7F3D0', false: '#CBD5E1' }}
-                      />
-                    </View>
-                  ))}
-
-                  <Text style={styles.sectionLabel}>Price Range (NPR)</Text>
-                  <View style={styles.rowInputs}>
-                    <TextInput
-                      style={[styles.input, styles.inputInline]}
-                      placeholder="Min"
-                      keyboardType="numeric"
-                      value={filters.minPrice}
-                      onChangeText={(val) => updateFilter('minPrice', val)}
-                    />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Max"
-                      keyboardType="numeric"
-                      value={filters.maxPrice}
-                      onChangeText={(val) => updateFilter('maxPrice', val)}
-                    />
-                  </View>
-
-                  <Text style={styles.sectionLabel}>Departure Time (HH:MM)</Text>
-                  <View style={styles.rowInputs}>
-                    <TextInput
-                      style={[styles.input, styles.inputInline]}
-                      placeholder="Start"
-                      value={filters.departureTimeStart}
-                      onChangeText={(val) => updateFilter('departureTimeStart', val)}
-                    />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="End"
-                      value={filters.departureTimeEnd}
-                      onChangeText={(val) => updateFilter('departureTimeEnd', val)}
-                    />
-                  </View>
-
                   <Text style={styles.sectionLabel}>Sort By</Text>
-                  <View style={styles.chipRow}>
-                    {[
-                      { key: '', label: 'Default' },
-                      { key: 'price', label: 'Price' },
-                      { key: 'duration', label: 'Duration' },
-                      { key: 'departureTime', label: 'Departure' },
-                      { key: 'seatsAvailable', label: 'Seats' },
-                    ].map((item) => (
-                      <TouchableOpacity
-                        key={item.key || 'default'}
-                        style={[
-                          styles.chip,
-                          filters.sortBy === item.key && styles.chipSelected,
-                        ]}
-                        onPress={() => updateFilter('sortBy', item.key)}
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            filters.sortBy === item.key && styles.chipTextSelected,
-                          ]}
-                        >
-                          {item.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  {filters.sortBy ? (
-                    <View style={styles.switchRow}>
-                      <Text style={styles.switchLabel}>Sort Order: {filters.sortOrder === 'asc' ? 'Ascending' : 'Descending'}</Text>
-                      <Switch
-                        value={filters.sortOrder === 'desc'}
-                        onValueChange={(val) => updateFilter('sortOrder', val ? 'desc' : 'asc')}
-                        thumbColor={filters.sortOrder === 'desc' ? '#2D9B9B' : '#E5E7EB'}
-                        trackColor={{ true: '#A7F3D0', false: '#CBD5E1' }}
-                      />
-                    </View>
-                  ) : null}
+                  <TouchableOpacity
+                    style={styles.sortDropdown}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      // Screenshot shows only this option
+                      updateFilter('sortBy', 'price');
+                      updateFilter('sortOrder', 'asc');
+                    }}
+                  >
+                    <Text style={styles.sortDropdownText}>Price: Low to High</Text>
+                  </TouchableOpacity>
                 </ScrollView>
 
                 <View style={styles.modalFooter}>
@@ -690,6 +665,16 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
                     <Text style={styles.primaryButtonText}>Apply</Text>
                   </TouchableOpacity>
                 </View>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    resetFilters();
+                    setFiltersVisible(false);
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.clearAllText}>Clear All Filters</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </Modal>
@@ -1021,7 +1006,6 @@ const styles = StyleSheet.create({
   seatsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
   seatIcon: {
     fontSize: 12,
@@ -1042,6 +1026,34 @@ const styles = StyleSheet.create({
   priceInr: {
     fontSize: 12,
     color: '#64748B',
+  },
+  amenitiesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  amenityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  amenityText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  amenityIcon: {
+    marginRight: 6,
   },
   modalBackdrop: {
     flex: 1,
@@ -1100,40 +1112,24 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: '#FFFFFF',
   },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  switchLabel: {
-    fontSize: 14,
-    color: '#0F172A',
-    fontWeight: '600',
-  },
-  rowInputs: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  input: {
-    flex: 1,
+  sortDropdown: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#1D4ED8',
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    backgroundColor: '#F8FAFC',
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
   },
-  inputInline: {
-    marginRight: 8,
+  sortDropdownText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
   },
   modalFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 16,
-    gap: 12,
   },
   secondaryButton: {
     flex: 1,
@@ -1158,6 +1154,12 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontWeight: '800',
+  },
+  clearAllText: {
+    textAlign: 'center',
+    marginTop: 14,
+    color: '#1D4ED8',
+    fontWeight: '600',
   },
 });
 
