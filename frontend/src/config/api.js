@@ -27,7 +27,6 @@ if (__DEV__) {
   console.log('   - Check IP address matches your current network IP');
   console.log('   - Mobile device must be on same WiFi network');
 }
-
 export const API_ENDPOINTS = {
   // User endpoints
   SIGNUP: '/user/signup',

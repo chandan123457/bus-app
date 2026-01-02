@@ -42,7 +42,9 @@ const getAmenityMeta = (label) => {
     case 'Restroom':
       return { lib: 'mci', name: 'toilet', color: COLORS.primary, text: 'Restroom' };
     case 'Blanket':
-      return { lib: 'mci', name: 'blanket', color: COLORS.primary, text: 'Blanket' };
+      // MaterialCommunityIcons does not include a "blanket" glyph in this Expo build.
+      // Use a valid, closest semantic icon to avoid rendering as "?".
+      return { lib: 'mci', name: 'bed', color: COLORS.primary, text: 'Blanket' };
     case 'Water Bottle':
       return { lib: 'mci', name: 'water', color: COLORS.primary, text: 'Water' };
     case 'Snacks':
@@ -525,7 +527,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
             </TouchableOpacity>
 
             <View style={styles.headerCenter}>
-              <Text style={styles.headerRoute}>
+              <Text style={styles.headerRoute} numberOfLines={2}>
                 {from} → {to}
               </Text>
               <Text style={styles.headerDate}>{date}</Text>
@@ -702,7 +704,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    height: 60,
+    minHeight: 60,
   },
   backButton: {
     padding: 8,
@@ -716,6 +718,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 8,
   },
   filterButton: {
     paddingHorizontal: 12,
@@ -733,6 +736,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
+    lineHeight: 22,
+    includeFontPadding: false,
   },
   headerDate: {
     color: 'rgba(255, 255, 255, 0.85)',
@@ -839,7 +844,7 @@ const styles = StyleSheet.create({
   busCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: '#0F172A',
     shadowOpacity: 0.08,
     shadowRadius: 20,
@@ -853,7 +858,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: 16,
+    padding: 12,
   },
   operatorInfo: {
     flexDirection: 'row',
@@ -886,7 +891,7 @@ const styles = StyleSheet.create({
   busMeta: {
     fontSize: 12,
     color: '#64748B',
-    marginTop: 2,
+    marginTop: 1,
   },
   tagContainer: {
     paddingHorizontal: 10,
@@ -914,7 +919,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginTop: 4,
+    marginTop: 2,
   },
   journeyPointLeft: {
     alignItems: 'flex-start',
@@ -937,12 +942,12 @@ const styles = StyleSheet.create({
   journeyCity: {
     fontSize: 12,
     color: '#475569',
-    marginTop: 2,
+    marginTop: 1,
   },
   journeyCityRight: {
     fontSize: 12,
     color: '#475569',
-    marginTop: 2,
+    marginTop: 1,
   },
   journeyLine: {
     flex: 1.5,
@@ -976,13 +981,13 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#F1F5F9',
     marginHorizontal: 16,
-    marginTop: 16,
+    marginTop: 12,
   },
   metadataRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
     backgroundColor: '#F8FAFC',
   },
   ratingContainer: {
@@ -1031,8 +1036,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
   },
   amenityPill: {
