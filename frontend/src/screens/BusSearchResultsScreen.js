@@ -16,6 +16,9 @@ import {
   FlatList,
   Alert,
   ActivityIndicator,
+  TextInput,
+  Modal,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -32,6 +35,20 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
   const [selectedTab, setSelectedTab] = useState('Fastest');
   const [busData, setBusData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [filtersVisible, setFiltersVisible] = useState(false);
+  const [filters, setFilters] = useState({
+    busType: 'ALL',
+    hasWifi: false,
+    hasAC: false,
+    hasCharging: false,
+    hasRestroom: false,
+    minPrice: '',
+    maxPrice: '',
+    departureTimeStart: '',
+    departureTimeEnd: '',
+    sortBy: '',
+    sortOrder: 'asc',
+  });
 
   // Get route params or use defaults
   const from = route?.params?.from || 'Jaipur';
@@ -39,6 +56,88 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
   const date = route?.params?.date || '27 Sept 2025';
   const apiData = route?.params?.busData;
   const searchData = route?.params?.searchData;
+
+  const buildFilterPayload = (base, currentFilters) => {
+    const payload = { ...base };
+
+    if (currentFilters.busType && currentFilters.busType !== 'ALL') {
+      payload.busType = currentFilters.busType;
+    }
+
+    ['hasWifi', 'hasAC', 'hasCharging', 'hasRestroom'].forEach((key) => {
+      if (currentFilters[key]) {
+        payload[key] = true;
+      }
+    });
+
+    const minNum = Number(currentFilters.minPrice);
+    if (Number.isFinite(minNum) && currentFilters.minPrice !== '') {
+      payload.minPrice = minNum;
+    }
+
+    const maxNum = Number(currentFilters.maxPrice);
+    if (Number.isFinite(maxNum) && currentFilters.maxPrice !== '') {
+      payload.maxPrice = maxNum;
+    }
+
+    if (currentFilters.departureTimeStart) {
+      payload.departureTimeStart = currentFilters.departureTimeStart;
+    }
+    if (currentFilters.departureTimeEnd) {
+      payload.departureTimeEnd = currentFilters.departureTimeEnd;
+    }
+
+    if (currentFilters.sortBy) {
+      payload.sortBy = currentFilters.sortBy;
+      payload.sortOrder = currentFilters.sortOrder || 'asc';
+    }
+
+    return payload;
+  };
+
+  const fetchWithFilters = async (nextFilters = filters) => {
+    if (!searchData) {
+      Alert.alert('Search Required', 'Please start a search from the home screen.');
+      return;
+    }
+
+    // Keep UI state in sync before hitting API so chips/switches reflect choice
+    setFilters(nextFilters);
+
+    setLoading(true);
+    try {
+      const payload = buildFilterPayload(searchData, nextFilters);
+      const response = await busAPI.searchBuses(payload);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to fetch buses');
+      }
+
+      const processed = processApiData(response.data);
+      setBusData(processed);
+    } catch (error) {
+      console.error('Filter fetch error:', error);
+      Alert.alert('Filter Error', error.message || 'Unable to apply filters.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetFilters = () => {
+    const cleared = {
+      busType: 'ALL',
+      hasWifi: false,
+      hasAC: false,
+      hasCharging: false,
+      hasRestroom: false,
+      minPrice: '',
+      maxPrice: '',
+      departureTimeStart: '',
+      departureTimeEnd: '',
+      sortBy: '',
+      sortOrder: 'asc',
+    };
+    fetchWithFilters(cleared);
+  };
 
   // Process API data into display format
   const processApiData = (apiResponse) => {
@@ -120,6 +219,10 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
         tripId: trip.tripId, // Store tripId directly for easy access
       };
     }).filter(trip => trip !== null); // Filter out any null entries
+  };
+
+  const updateFilter = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   React.useEffect(() => {
@@ -411,12 +514,35 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
               <Text style={styles.headerDate}>{date}</Text>
             </View>
 
-            {/* Right spacer to keep center text truly centered */}
-            <View style={styles.headerRightSpacer} />
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setFiltersVisible(true)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.filterButtonText}>Filters & Sort</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.filterBar}>
+            <Text style={styles.filterBarText}>Active filters: {filters.busType !== 'ALL' ? filters.busType : 'None'}
+            </Text>
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={resetFilters}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.resetButtonText}>Reset</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Main Content Area - Bus Cards */}
           <View style={styles.mainCard}>
+            {loading && (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color="#2D9B9B" />
+                <Text style={styles.loadingOverlayText}>Applying filters...</Text>
+              </View>
+            )}
             <FlatList
               data={getDisplayData()}
               renderItem={renderBusCard}
@@ -441,6 +567,170 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
               }
             />
           </View>
+
+          <Modal
+            visible={filtersVisible}
+            animationType="slide"
+            transparent
+            onRequestClose={() => setFiltersVisible(false)}
+          >
+            <View style={styles.modalBackdrop}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Filters & Sort</Text>
+                  <TouchableOpacity onPress={() => setFiltersVisible(false)}>
+                    <Text style={styles.modalClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <Text style={styles.sectionLabel}>Bus Type</Text>
+                  <View style={styles.chipRow}>
+                    {[
+                      { key: 'ALL', label: 'Any' },
+                      { key: 'SEATER', label: 'Seater' },
+                      { key: 'SLEEPER', label: 'Sleeper' },
+                      { key: 'MIXED', label: 'Mixed' },
+                    ].map((type) => (
+                      <TouchableOpacity
+                        key={type.key}
+                        style={[
+                          styles.chip,
+                          filters.busType === type.key && styles.chipSelected,
+                        ]}
+                        onPress={() => updateFilter('busType', type.key)}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            filters.busType === type.key && styles.chipTextSelected,
+                          ]}
+                        >
+                          {type.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.sectionLabel}>Amenities</Text>
+                  {[
+                    { key: 'hasWifi', label: 'WiFi' },
+                    { key: 'hasAC', label: 'AC' },
+                    { key: 'hasCharging', label: 'Charging' },
+                    { key: 'hasRestroom', label: 'Restroom' },
+                  ].map((item) => (
+                    <View key={item.key} style={styles.switchRow}>
+                      <Text style={styles.switchLabel}>{item.label}</Text>
+                      <Switch
+                        value={filters[item.key]}
+                        onValueChange={(val) => updateFilter(item.key, val)}
+                        thumbColor={filters[item.key] ? '#2D9B9B' : '#E5E7EB'}
+                        trackColor={{ true: '#A7F3D0', false: '#CBD5E1' }}
+                      />
+                    </View>
+                  ))}
+
+                  <Text style={styles.sectionLabel}>Price Range (NPR)</Text>
+                  <View style={styles.rowInputs}>
+                    <TextInput
+                      style={[styles.input, styles.inputInline]}
+                      placeholder="Min"
+                      keyboardType="numeric"
+                      value={filters.minPrice}
+                      onChangeText={(val) => updateFilter('minPrice', val)}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Max"
+                      keyboardType="numeric"
+                      value={filters.maxPrice}
+                      onChangeText={(val) => updateFilter('maxPrice', val)}
+                    />
+                  </View>
+
+                  <Text style={styles.sectionLabel}>Departure Time (HH:MM)</Text>
+                  <View style={styles.rowInputs}>
+                    <TextInput
+                      style={[styles.input, styles.inputInline]}
+                      placeholder="Start"
+                      value={filters.departureTimeStart}
+                      onChangeText={(val) => updateFilter('departureTimeStart', val)}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="End"
+                      value={filters.departureTimeEnd}
+                      onChangeText={(val) => updateFilter('departureTimeEnd', val)}
+                    />
+                  </View>
+
+                  <Text style={styles.sectionLabel}>Sort By</Text>
+                  <View style={styles.chipRow}>
+                    {[
+                      { key: '', label: 'Default' },
+                      { key: 'price', label: 'Price' },
+                      { key: 'duration', label: 'Duration' },
+                      { key: 'departureTime', label: 'Departure' },
+                      { key: 'seatsAvailable', label: 'Seats' },
+                    ].map((item) => (
+                      <TouchableOpacity
+                        key={item.key || 'default'}
+                        style={[
+                          styles.chip,
+                          filters.sortBy === item.key && styles.chipSelected,
+                        ]}
+                        onPress={() => updateFilter('sortBy', item.key)}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            filters.sortBy === item.key && styles.chipTextSelected,
+                          ]}
+                        >
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {filters.sortBy ? (
+                    <View style={styles.switchRow}>
+                      <Text style={styles.switchLabel}>Sort Order: {filters.sortOrder === 'asc' ? 'Ascending' : 'Descending'}</Text>
+                      <Switch
+                        value={filters.sortOrder === 'desc'}
+                        onValueChange={(val) => updateFilter('sortOrder', val ? 'desc' : 'asc')}
+                        thumbColor={filters.sortOrder === 'desc' ? '#2D9B9B' : '#E5E7EB'}
+                        trackColor={{ true: '#A7F3D0', false: '#CBD5E1' }}
+                      />
+                    </View>
+                  ) : null}
+                </ScrollView>
+
+                <View style={styles.modalFooter}>
+                  <TouchableOpacity
+                    style={styles.secondaryButton}
+                    onPress={() => {
+                      resetFilters();
+                      setFiltersVisible(false);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.secondaryButtonText}>Clear</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.primaryButton}
+                    onPress={() => {
+                      fetchWithFilters({ ...filters });
+                      setFiltersVisible(false);
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.primaryButtonText}>Apply</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </SafeAreaView>
       </ImageBackground>
     </>
@@ -480,6 +770,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#0EA5E9',
+    borderRadius: 12,
+  },
+  filterButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   headerRoute: {
     color: '#FFFFFF',
     fontSize: 18,
@@ -493,6 +794,28 @@ const styles = StyleSheet.create({
   },
   headerRightSpacer: {
     width: 40,
+  },
+  filterBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    marginBottom: 8,
+    paddingHorizontal: 20,
+  },
+  filterBarText: {
+    fontSize: 13,
+    color: '#475569',
+  },
+  resetButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 10,
+  },
+  resetButtonText: {
+    color: '#0F172A',
+    fontWeight: '600',
   },
   mainCard: {
     position: 'absolute',
@@ -509,6 +832,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 5,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    zIndex: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+  },
+  loadingOverlayText: {
+    marginTop: 8,
+    color: '#0F172A',
+    fontWeight: '600',
   },
   busList: {
     flex: 1,
@@ -738,6 +1080,122 @@ const styles = StyleSheet.create({
   priceInr: {
     fontSize: 12,
     color: '#64748B',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: height * 0.8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalClose: {
+    fontSize: 20,
+    color: '#0F172A',
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  chipSelected: {
+    backgroundColor: '#0EA5E9',
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  chipTextSelected: {
+    color: '#FFFFFF',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  switchLabel: {
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '600',
+  },
+  rowInputs: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    backgroundColor: '#F8FAFC',
+  },
+  inputInline: {
+    marginRight: 8,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 12,
+  },
+  secondaryButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  secondaryButtonText: {
+    color: '#0F172A',
+    fontWeight: '700',
+  },
+  primaryButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#0EA5E9',
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
 });
 
