@@ -38,15 +38,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [filters, setFilters] = useState({
     busType: 'ALL',
-    hasWifi: false,
-    hasAC: false,
-    hasCharging: false,
-    hasRestroom: false,
-    minPrice: '',
-    maxPrice: '',
-    departureTimeStart: '',
-    departureTimeEnd: '',
-    sortBy: '',
+    sortBy: 'price',
     sortOrder: 'asc',
   });
 
@@ -64,29 +56,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
       payload.busType = currentFilters.busType;
     }
 
-    ['hasWifi', 'hasAC', 'hasCharging', 'hasRestroom'].forEach((key) => {
-      if (currentFilters[key]) {
-        payload[key] = true;
-      }
-    });
-
-    const minNum = Number(currentFilters.minPrice);
-    if (Number.isFinite(minNum) && currentFilters.minPrice !== '') {
-      payload.minPrice = minNum;
-    }
-
-    const maxNum = Number(currentFilters.maxPrice);
-    if (Number.isFinite(maxNum) && currentFilters.maxPrice !== '') {
-      payload.maxPrice = maxNum;
-    }
-
-    if (currentFilters.departureTimeStart) {
-      payload.departureTimeStart = currentFilters.departureTimeStart;
-    }
-    if (currentFilters.departureTimeEnd) {
-      payload.departureTimeEnd = currentFilters.departureTimeEnd;
-    }
-
+    // Sort (screenshot shows only "Price: Low to High")
     if (currentFilters.sortBy) {
       payload.sortBy = currentFilters.sortBy;
       payload.sortOrder = currentFilters.sortOrder || 'asc';
@@ -125,15 +95,7 @@ const BusSearchResultsScreen = ({ navigation, route }) => {
   const resetFilters = () => {
     const cleared = {
       busType: 'ALL',
-      hasWifi: false,
-      hasAC: false,
-      hasCharging: false,
-      hasRestroom: false,
-      minPrice: '',
-      maxPrice: '',
-      departureTimeStart: '',
-      departureTimeEnd: '',
-      sortBy: '',
+      sortBy: 'price',
       sortOrder: 'asc',
     };
     fetchWithFilters(cleared);
