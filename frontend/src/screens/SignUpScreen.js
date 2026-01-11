@@ -146,7 +146,10 @@ const SignUpScreen = ({ navigation }) => {
         const errorLower = rawError.toLowerCase();
 
         // Check if this is a duplicate email scenario
-        if (errorLower.includes('email already registered')) {
+        if (
+          (errorLower.includes('email') && errorLower.includes('already registered')) ||
+          errorLower.includes('already registered. please sign in')
+        ) {
           setError('This email is already registered. Please sign in or reset your password.');
           Alert.alert(
             'Email Already Registered',
@@ -159,18 +162,6 @@ const SignUpScreen = ({ navigation }) => {
         } else if (errorLower.includes('verification email') || errorLower.includes('failed to send')) {
           // Email sending failed - show retry modal
           setShowEmailErrorModal(true);
-        } else if (errorLower.includes('error while signup') || result.status === 500) {
-          // Backend sent OTP but user creation failed - still show OTP modal
-          // This handles the case where OTP was sent but duplicate constraint or other DB error occurred
-          console.log('⚠️ Signup error after OTP likely sent:', rawError);
-          setShowOTPModal(true);
-          setError(''); // Don't show error, let user try to verify
-          // Show informative alert
-          Alert.alert(
-            'Verification Email Sent',
-            'An OTP has been sent to your email. If you already have an account, please sign in instead.',
-            [{ text: 'OK' }]
-          );
         } else {
           // Other errors
           setError(rawError);

@@ -451,10 +451,24 @@ const PaymentScreen = ({ navigation, route }) => {
         return;
       }
 
+      // Backend requires a positive totalAmount. Prefer computed seat total, fallback to originalAmount.
+      const safeTotalAmount = (() => {
+        const computed = Number(computedBaseFareNpr);
+        if (Number.isFinite(computed) && computed > 0) return computed;
+        const original = Number(originalAmount);
+        if (Number.isFinite(original) && original > 0) return original;
+        return 0;
+      })();
+
+      if (!safeTotalAmount || safeTotalAmount <= 0) {
+        Alert.alert('Error', 'Unable to determine booking amount. Please go back and try again.');
+        return;
+      }
+
       const response = await api.applyCoupon({
         code: couponCode.trim(),
         tripId,
-        totalAmount: originalAmount,
+        totalAmount: safeTotalAmount,
       }, token);
 
       if (response.success) {
@@ -516,9 +530,26 @@ const PaymentScreen = ({ navigation, route }) => {
           return;
         }
 
+        const safeTotalAmount = (() => {
+          const computed = Number(computedBaseFareNpr);
+          if (Number.isFinite(computed) && computed > 0) return computed;
+          const original = Number(originalAmount);
+          if (Number.isFinite(original) && original > 0) return original;
+          return 0;
+        })();
+
+        if (!safeTotalAmount || safeTotalAmount <= 0) {
+          Alert.alert('Error', 'Unable to determine booking amount. Please go back and try again.');
+          return;
+        }
+
         setCouponLoading(true);
         const couponResp = await api.applyCoupon(
-          { code: typedCoupon, tripId, totalAmount: originalAmount },
+          {
+            code: typedCoupon,
+            tripId,
+            totalAmount: safeTotalAmount,
+          },
           token
         );
         setCouponLoading(false);

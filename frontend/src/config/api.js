@@ -14,19 +14,22 @@
  */
 
 // Backend URL configuration
-// Use the same IP that Metro/Expo shows (your computer's IP on WiFi)
-// Currently using: 192.168.22.4 (from Metro: exp://192.168.22.4:8081)
-// If your IP changes, update only this line.
-const API_BASE_URL = 'http://192.168.23.32:3000';  // Development: local IP for testing
+// Prefer environment-provided URL so production builds do not hit a dev LAN IP.
+// Falls back to previous local IP for dev if not provided.
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://gantabya-44tr.onrender.com';
 
 // Log API URL in development for debugging
 if (__DEV__) {
   console.log('🔗 API Base URL:', API_BASE_URL);
+  if (!process.env.EXPO_PUBLIC_API_BASE_URL) {
+    console.warn('API base URL is using fallback local IP. Set EXPO_PUBLIC_API_BASE_URL for builds.');
+  }
   console.log('💡 Network troubleshooting:');
   console.log('   - Ensure backend server is running');
   console.log('   - Check IP address matches your current network IP');
   console.log('   - Mobile device must be on same WiFi network');
 }
+
 export const API_ENDPOINTS = {
   // User endpoints
   SIGNUP: '/user/signup',
